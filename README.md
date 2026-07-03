@@ -165,8 +165,9 @@ game = out.state;
 ## Deploying to GitHub Pages
 
 `vite.config.js` uses `base: "./"`, so the build works from any path, and `.github/workflows/deploy.yml` is
-already set up: on every push to `main` it runs `npm run verify` (failing the deploy if any payout drifts
-from theory), builds, and publishes `dist/` via GitHub's official Pages actions. To turn it on:
+already set up: it runs `npm run verify` (failing the run if any payout drifts from theory) and `npm run
+build` on every push and pull request against `main` — so PRs get a real status check — and additionally
+publishes `dist/` via GitHub's official Pages actions when the push is to `main` itself. To turn it on:
 
 1. Push this repo to GitHub.
 2. In the repo's Settings → Pages, set **Source** to "GitHub Actions".
