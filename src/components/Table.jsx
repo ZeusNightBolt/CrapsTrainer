@@ -21,8 +21,11 @@ export default function Table({ bets, phase, point, working, rules, onPlace, onC
   const Tile = ({ path, label, edge, sub, ok = true }) => {
     const a = amt(path);
     const enabled = ok && (canPlace ? canPlace(path) : true);
+    // A disabled tile that still has chips riding (e.g. Pass Line once the
+    // point is set) stays fully visible — your money shouldn't look inactive —
+    // it just stops accepting taps (.lock instead of .dis).
     return (
-      <div className={"tile" + (enabled ? "" : " dis")} onClick={() => enabled && tap(path)}
+      <div className={"tile" + (enabled ? "" : a > 0 ? " lock" : " dis")} onClick={() => enabled && tap(path)}
         onContextMenu={(e) => hold(e, path)}
         style={{ borderColor: a ? edgeColor(edge) : "var(--line-2)" }}>
         <div>

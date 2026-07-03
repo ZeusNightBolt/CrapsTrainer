@@ -42,6 +42,16 @@ function drag(b, rules) {
 
 const INIT_STATS = { rolls: 0, points: 0, sevenOuts: 0, peak: 1000, trough: 1000, best: 0, worst: 0, start: 1000 };
 
+// True P&L of a single roll. `out.payout` alone can't be it: bets are debited
+// from the bankroll at placement, so a roll that loses every bet has payout 0
+// and a winning line bet's payout includes the returned stake. Charging the
+// stake of each bet cleared this roll (wagered-before minus wagered-after)
+// against the credited payout yields the real net: −$25 for a lost $25 pass
+// line, +$25 for a won one, $0 for a push, +$14 for a place-6 hit that stays up.
+function rollDelta(before, after, payout) {
+  return round2(payout - (totalWagered(before) - totalWagered(after)));
+}
+
 export default function App() {
   const [tab, setTab] = useState("table");
   const [game, setGame] = useState(() => newGame(1000));
@@ -54,6 +64,8 @@ export default function App() {
   const [stats, setStats] = useState(INIT_STATS);
   const [rules, setRules] = useState({ ...DEFAULT_RULES, oddsMode: "345" });
   const [showRules, setShowRules] = useState(false);
+  const [lastRolls, setLastRolls] = useState([]);
+  const [flash, setFlash] = useState(null); // { key, amt } → floating ±$ after a roll
   const iv = useRef(null);
 
   const b = game.bets;
@@ -134,20 +146,24 @@ export default function App() {
         const d1 = 1 + rnd6(), d2 = 1 + rnd6();
         setDice([d1, d2]);
         const out = resolve(game, d1, d2, rules);
+        const delta = rollDelta(game.bets, out.state.bets, out.payout);
+        const sevenOut = out.events.some((e) => e.type === "sevenout");
         setGame(out.state);
         setHist((h) => [...h.slice(-119), out.state.bankroll]);
         setEvents([{ type: "roll", m: `Rolled ${d1} + ${d2} = ${d1 + d2}` }, ...out.events]);
+        setLastRolls((r) => [{ d1, d2, t: d1 + d2, delta, sevenOut }, ...r.slice(0, 9)]);
+        if (delta !== 0) setFlash({ key: Date.now(), amt: delta });
+        if (navigator.vibrate) navigator.vibrate(sevenOut ? [30, 40, 60] : delta > 0 ? [12, 30, 12] : 12);
         setStats((s) => {
           const madePoint = out.events.some((e) => e.m.includes("Point") && e.m.includes("made"));
-          const sevenOut = out.events.some((e) => e.type === "sevenout");
           return {
             ...s, rolls: s.rolls + 1,
             points: s.points + (madePoint ? 1 : 0),
             sevenOuts: s.sevenOuts + (sevenOut ? 1 : 0),
             peak: Math.max(s.peak, out.state.bankroll),
             trough: Math.min(s.trough, out.state.bankroll),
-            best: Math.max(s.best, out.payout),
-            worst: Math.min(s.worst, out.payout),
+            best: Math.max(s.best, delta),
+            worst: Math.min(s.worst, delta),
           };
         });
         setRolling(false);
@@ -169,6 +185,7 @@ export default function App() {
   function reset() {
     setGame(newGame(1000)); setHist([1000]); setStats(INIT_STATS);
     setEvents([{ type: "info", m: "Reset. Bankroll $1,000." }]); setDice([1, 1]);
+    setLastRolls([]); setFlash(null);
   }
 
   const blendedEdge = table.sum ? (table.drag / table.sum) * 100 : 0;
@@ -185,7 +202,13 @@ export default function App() {
           <Dice dice={dice} rolling={rolling} />
           <div className="bankroll">
             <div className="k">Bankroll</div>
-            <div className="v mono" style={{ color: game.bankroll >= stats.start ? "#34d399" : "#f43f5e" }}>{usd(game.bankroll)}</div>
+            <div className="v mono" key={flash ? "v" + flash.key : "v"}
+              style={{ color: game.bankroll >= stats.start ? "#34d399" : "#f43f5e" }}>{usd(game.bankroll)}</div>
+            {flash && (
+              <div key={"f" + flash.key} className={"payfloat mono " + (flash.amt > 0 ? "up" : "down")}>
+                {flash.amt > 0 ? "+" : "−"}{usd(Math.abs(flash.amt))}
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -244,8 +267,19 @@ export default function App() {
             {game.phase === "point" && b.passline > 0 && <button className="btn ghost" onClick={() => addMaxOdds("pass")}>+ Max Pass Odds</button>}
             {game.phase === "point" && b.dontpass > 0 && <button className="btn ghost" onClick={() => addMaxOdds("dont")}>+ Max Lay Odds</button>}
             <div className="grow" />
-            <button className="btn primary" style={{ minWidth: 160 }} onClick={roll} disabled={rolling}>{rolling ? "ROLLING…" : "ROLL DICE"}</button>
+            <button className="btn primary roll-desktop" style={{ minWidth: 160 }} onClick={roll} disabled={rolling}>{rolling ? "ROLLING…" : "ROLL DICE"}</button>
           </div>
+
+          {lastRolls.length > 0 && (
+            <div className="rollstrip" aria-label="Recent rolls">
+              {lastRolls.map((r, i) => (
+                <div key={lastRolls.length - i} className={"rollpip mono" + (r.sevenOut ? " out" : r.delta > 0 ? " up" : r.delta < 0 ? " down" : "")}>
+                  <span className="rt">{r.t}</span>
+                  <span className="rd">{r.d1}·{r.d2}</span>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="layout">
             <Table bets={b} phase={game.phase} point={game.point} working={game.working} rules={rules}
@@ -288,6 +322,19 @@ export default function App() {
                 <button className="btn ghost full" style={{ marginTop: 8, fontSize: 11 }} onClick={reset}>Reset bankroll</button>
               </div>
             </div>
+          </div>
+
+          {/* Thumb-reach action bar — fixed to the bottom on small screens only
+              (see .mobilebar in styles.css), so rolling never requires
+              scrolling back to the top control bar mid-game. */}
+          <div className="mobilebar">
+            <div className={"puck mini " + (game.phase === "point" ? "on" : "off")}>{game.phase === "point" ? game.point : "OFF"}</div>
+            <Dice dice={dice} rolling={rolling} size={30} />
+            <div className="mb-info">
+              <div className="k">{usd(table.sum)} on table</div>
+              <div className="v mono" style={{ color: game.bankroll >= stats.start ? "#34d399" : "#f43f5e" }}>{usd(game.bankroll)}</div>
+            </div>
+            <button className="btn primary grow" onClick={roll} disabled={rolling}>{rolling ? "ROLLING…" : "ROLL"}</button>
           </div>
         </>
       )}
