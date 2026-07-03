@@ -7,9 +7,7 @@ Built because most craps "strategy" content sells systems that can't beat a fixe
 tool does the opposite: it makes the edge visible and teaches the only decision that actually matters —
 how much variance to buy for a fixed, small expected cost.
 
-<!-- Add a screenshot at docs/screenshot.png and uncomment:
-![Craps Trainer](docs/screenshot.png)
--->
+![Craps Trainer — live table with a point set, odds loaded, and a place bet working](docs/screenshot.png)
 
 ## What's inside
 
@@ -32,6 +30,10 @@ how much variance to buy for a fixed, small expected cost.
 
 The house edge is encoded as color everywhere: cyan = 0% (free odds), green = cheap, amber = moderate,
 orange = expensive, red = sucker.
+
+Built to play well on a phone: a fixed thumb-reach bar (puck, dice, bankroll, roll button) so you never
+scroll to roll, big touch targets, haptic feedback on resolutions, a recent-rolls strip, chip-badge bet
+markers on every tile, and safe-area-aware layout for notched screens.
 
 ## Why you can trust the numbers
 
