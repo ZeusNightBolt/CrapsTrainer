@@ -1,81 +1,102 @@
 # Craps Trainer
 
-An interactive, **mathematically-verified** craps trainer. Learn every bet on the table, its exact
-payout, and its **true house edge** — with the entire board color-coded by what each bet costs you.
+[![CI & Deploy](https://github.com/ZeusNightBolt/CrapsTrainer/actions/workflows/deploy.yml/badge.svg)](https://github.com/ZeusNightBolt/CrapsTrainer/actions/workflows/deploy.yml)
+[![Live demo](https://img.shields.io/badge/live-zeusnightbolt.github.io%2FCrapsTrainer-f5c518)](https://zeusnightbolt.github.io/CrapsTrainer/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-Built because most craps "strategy" content sells systems that can't beat a fixed negative edge. This
-tool does the opposite: it makes the edge visible and teaches the only decision that actually matters —
-how much variance to buy for a fixed, small expected cost.
+An interactive, **mathematically verified** craps trainer and simulator. Learn every bet on the table,
+its exact payout, and its true house edge — with a live coach that recommends the edge-minimizing next
+move after every roll.
+
+**▶ Play it now: <https://zeusnightbolt.github.io/CrapsTrainer/>**
 
 ![Craps Trainer — live table with a point set, odds loaded, and a place bet working](docs/screenshot.png)
 
-## What's inside
+## Why this exists
 
-- **Table** — a live, tappable craps table. Place any real bet (line, odds, come/don't-come with odds,
-  place, buy, lay, hardways, field, and the full center props including World/Whirl), toggle come-out
-  working, roll the dice, and watch every bet resolve with a plain-English log, a bankroll sparkline, and
-  session stats.
-- **Coach** — a live next-best-move widget (top strip on desktop, floating thumb-reach card on mobile). It
-  reads the table after every roll and tells you the single edge-minimizing move with the math behind it —
-  bet the line, load max odds the moment a point exists, spread with Come + odds to three numbers, then stop
-  — and a one-tap button that executes it. It also flags leaks (chips on the center/field, Place 4/10 when
-  buying is cheaper) with a take-it-down action. Dismissable if you want to fly solo.
-- **Table rules** — three real casino variants you'll actually run into, live-wired into every number on
-  every tab: max odds (1x / 2x / 3-4-5x / 5x / 10x / 20x / 100x), the Field paytable (12 pays 2:1 or 3:1),
-  and the Buy/Lay vig convention (charged on a win only, or up front at placement).
-- **Bets & Payouts** — every bet sorted by house edge for the currently-selected table rules, with payout,
-  win probability, and how it resolves, plus both the Pass-side and Don't-side odds-dilution ladders.
-- **Strategy** — the tiered breakdown: what to bet, what's acceptable, and which "systems" (Iron Cross,
-  hedging, the doey-don't, World/Whirl) are variance illusions dressed up as edges — plus a variance/bankroll
-  section, a corrected "decisions per hour" cost model, and a note on why dice setting isn't a real edge.
-- **Simulator** — Monte-Carlo strategy comparison. Pick a strategy (Pass + Max Odds, Don't Pass + Max Lay,
-  3-Point Molly, Place 6 & 8, Iron Cross, or an Any-Seven worst-case demo), a unit size, session length, and
-  trial count, and it runs thousands of sessions through the same verified engine the Table uses — showing
-  the full distribution of outcomes, not just the headline edge percentage.
+Most craps "strategy" content sells betting systems that cannot beat a fixed negative edge. This project
+takes the opposite approach: it makes the edge visible everywhere — every tile on the felt is labeled and
+color-coded by what the bet actually costs — and teaches the only decision that genuinely matters in the
+game: **how much variance to buy for a fixed, small expected cost.** Every payout in the engine is
+Monte-Carlo verified against published house-edge figures before any build ships.
 
-The house edge is encoded as color everywhere: cyan = 0% (free odds), green = cheap, amber = moderate,
-orange = expensive, red = sucker.
+## Features
 
-Built to play well on a phone: a fixed thumb-reach bar (puck, dice, bankroll, roll button) so you never
-scroll to roll, big touch targets, haptic feedback on resolutions, a recent-rolls strip, chip-badge bet
-markers on every tile, and safe-area-aware layout for notched screens.
+### 🎓 Coach — guided play
+A live next-best-move widget (top strip on desktop, floating thumb-reach card on mobile) that reads the
+table after every roll and prescribes the single edge-minimizing move, with the math attached and a
+one-tap button that executes it:
+
+1. **Come-out** → bet the Pass Line (1.41%) or Don't Pass (1.36%) — the only good flat bets.
+2. **Point set** → load **max odds** immediately, the only 0%-edge bet in the casino, sized correctly per
+   number and per table rules (3× / 4× / 5× under 3-4-5×).
+3. **Odds loaded** → spread with a Come bet, then back it with odds when it travels.
+4. **Three numbers working** → stop. That's the 3-Point Molly, the mathematical ceiling of "correct" craps.
+
+The coach also runs **leak detection**: chips riding the center/field are flagged with their edge range and
+a working "take it down" action, and Place 4/10 triggers a buy-instead warning aware of the table's vig
+convention.
+
+### 🎲 Table — full interactive felt
+Every real bet is playable: Pass/Don't Pass, Come/Don't Come (with correct travel mechanics and per-number
+odds), free odds, Place, Buy, Lay, hardways, Field, and the complete center props (Any Seven, Any Craps,
+Yo, Ace-Deuce, Aces, Boxcars, Horn, C&E, World/Whirl). Includes the come-out working toggle, chip
+denominations, right-click/remove-mode take-downs, a plain-English roll log with exact amounts, session
+statistics with true per-roll P&L, a bankroll chart, and strategy presets.
+
+### ⚙️ Table rules — real casino variants
+Three variants you will actually encounter, live-wired into every number on every tab:
+
+- **Max odds**: 1× / 2× / 3-4-5× / 5× / 10× / 20× / 100×
+- **Field paytable**: 12 pays 2:1 (5.56% edge) or 3:1 (2.78%)
+- **Buy/Lay vig**: charged on the win only, or up front at placement
+
+### 📊 Bets & Payouts — the reference
+Every bet sorted by house edge under the currently selected table rules, with payout, win probability, and
+resolution timing — plus both the Pass-side and Don't-side odds-dilution ladders with the active setting
+highlighted.
+
+### 📖 Strategy — the write-up
+The tiered breakdown: what to bet, what's acceptable, and which "systems" (Iron Cross, hedging, the
+doey-don't, World/Whirl) are variance illusions dressed up as edges. Covers variance and bankroll sizing
+with simulated standard-deviation figures, a corrected decisions-per-hour cost model, and why dice setting
+is not a real edge.
+
+### 🧪 Simulator — see the distribution
+Monte-Carlo comparison of real strategies (Pass + Max Odds, Don't Pass + Max Lay, 3-Point Molly,
+Place 6 & 8, Iron Cross, and an Any-Seven worst-case demo) across thousands of sessions through the same
+verified engine the table uses — mean, median, standard deviation, percentiles, bust rate, and the full
+histogram of ending bankrolls.
+
+### 📱 Built for phones
+Fixed thumb-reach action bar (puck, live dice, bankroll, roll button) so rolling never requires scrolling,
+floating coach card, single-row scrollable tabs, large touch targets, haptic feedback on resolutions, a
+recent-rolls strip, safe-area-aware layout for notched screens, and `prefers-reduced-motion` support.
 
 ## Why you can trust the numbers
 
-Every payout in the engine is **Monte-Carlo-verified** against its theoretical house edge before it ships.
-The verification is committed as a runnable script:
+Every payout in the engine is verified against its theoretical house edge before it ships, and the
+verification gates CI — a payout that drifts from theory fails the deploy:
 
 ```bash
 npm run verify
 ```
 
-It simulates each bet to statistical convergence and prints realized vs. theoretical edge, e.g.:
+The verifier runs three layers:
 
-```
-Pass Line      1.41%   theory 1.41%
-Don't Pass     1.36%   theory 1.36%
-Place 6        1.52%   theory 1.52%
-Place 4        6.67%   theory 6.67%
-Buy 4          1.67%   theory 1.67%
-Hard 6         9.09%   theory 9.09%
-Any Seven     16.67%   theory 16.67%
-```
-
-Beyond the per-bet edge simulations, the verifier also runs **full come / don't-come lifecycle
-simulations** (box → travel → resolution, through point-mades and come-outs, asserting the 1.41% / 1.36%
-edges) and a set of **exact-payout rule checks** for the fiddly cases averages can hide: come odds that are
-OFF on a come-out are no-action (returned whether the number hits or the 7 shows), don't-come lay odds always
-work, a winning come bet is paid *and taken down* (the real casino rule — it does not stay riding the
-number), hardways idle when off, and the bar-12 push returns the stake.
+1. **Per-bet Monte-Carlo simulations** — every bet family simulated to convergence and compared with the
+   standard published figures (realized vs. theoretical edge).
+2. **Full come / don't-come lifecycle simulations** — box → travel → resolution, followed through
+   point-mades and come-outs, asserting the published 1.41% / 1.36% edges.
+3. **Exact-payout rule checks** for the cases averages can hide: come odds that are OFF on a come-out are
+   no-action (returned whether the number hits or the 7 shows), don't-come lay odds always work, a winning
+   come bet is paid *and taken down* (the real casino rule), hardways idle when off, and the bar-12 push
+   returns the stake.
 
 All edges derive from the 36-outcome dice sample space and corroborate
-[Wizard of Odds](https://wizardofodds.com/games/craps/), the standard published reference. Buy/Lay figures
-default to the modern convention of a 5% vig charged on the win only; the app also supports "vig always"
-(commission paid once at placement) as a Table Rule, which — counterintuitively — is *cheaper* than vig-on-win
-for Lay bets and *pricier* for Buy bets. The derivation and the Monte-Carlo checks for both conventions, plus
-the full table-odds ladder (1x through 100x) and both Field paytables, are in `test/simulate.js`.
+[Wizard of Odds](https://wizardofodds.com/games/craps/), the standard published reference.
 
-## House edge reference
+## House-edge reference
 
 | Bet | Pays | House edge |
 |---|---|---|
@@ -86,123 +107,135 @@ the full table-odds ladder (1x through 100x) and both Field paytables, are in `t
 | Buy 4 / 10 (vig on win) | 2:1 − 5% | 1.67% |
 | Field (12 pays 3:1) | 1:1 / 2:1 / 3:1 | 2.78% |
 | Place 5 / 9 | 7:5 | 4.00% |
+| Field (12 pays 2:1) | 1:1 / 2:1 | 5.56% |
 | Place 4 / 10 | 9:5 | 6.67% |
 | Big 6 / 8, Hard 6 / 8 | 1:1 / 9:1 | 9.09% |
-| Hard 4 / 10, Any Craps, Yo | 7:1 / 15:1 | 11.11% |
+| Hard 4 / 10, Any Craps, Yo, Ace-Deuce, C&E | 7:1 / 15:1 | 11.11% |
+| Horn | 15:1 / 30:1 | 12.50% |
+| World / Whirl | combo | 13.33% |
 | Aces / Boxcars | 30:1 | 13.89% |
 | Any Seven | 4:1 | **16.67%** |
 
-Adding free odds behind a line bet dilutes the blended edge on your total wager: Pass + 3-4-5× odds ≈
-0.37%; Pass + 10× ≈ 0.18%; Pass + 100× ≈ 0.02%. The Don't side dilutes similarly but starts lower and ends
-lower: Don't Pass + 3-4-5× lay ≈ 0.27%. Both full ladders are Monte-Carlo simulated in `test/simulate.js` and
-shown live on the Bets & Payouts tab.
+Free odds behind a line bet dilute the blended edge on the total wager: Pass + 3-4-5× odds ≈ 0.37%;
+Pass + 10× ≈ 0.18%; Pass + 100× ≈ 0.02%. The Don't side starts lower and ends lower: Don't Pass +
+3-4-5× lay ≈ 0.27%. Both full ladders are simulated in `test/simulate.js` and displayed live in the app.
 
 ## Research notes
 
-The bet math and strategy content were checked against, and in places corrected relative to a first draft
-by, published craps literature rather than taken at face value:
+The bet math and strategy content were checked against published craps literature rather than taken at
+face value, and corrected where the common summaries are imprecise:
 
-- **Vig-always vs. vig-on-win** for Buy/Lay bets is not a flat 4.76% on every number the way it's sometimes
-  summarized — that figure is a "per bet made" convention. Priced on the same per-resolution basis as every
-  other bet in this app (see `engine.js`), vig-always works out to `vig × P(losing side)` for Buy bets
-  (3.33% / 3.00% / 2.73%) and `layOdds × vig × P(number)` for Lay bets (0.83% / 1.33% / 1.89%) — cheaper than
-  vig-on-win for Lay, pricier for Buy. Both are Monte-Carlo verified.
-- **"Decisions per hour" ≠ "rolls per hour."** A table runs roughly 100 rolls/hour, but Pass/Come-type bets
-  take ~3.4 rolls on average to resolve, so pricing an hourly cost off the roll count overstates it roughly
-  3×. One-roll bets (Field, props) don't get this discount, which is a real part of why they're so much more
-  expensive per hour at a similar bet size.
-- **Dice setting / rhythm rolling** has no controlled evidence of beating the game, and casinos require dice
-  to hit a randomizing pyramid pattern specifically to defeat it. It's covered in the Strategy tab as a
-  placebo, not a technique.
-- The **World/Whirl** bet (added here; it wasn't in the original build) is a Horn plus an Any-Seven leg. Its
-  7 outcome is a wash, not a win — the any-7 payout exactly refunds the other four units — which is a common
-  point of confusion, since it's often pitched as a "safer Horn."
+- **Vig-always vs. vig-on-win** for Buy/Lay bets is not the flat 4.76% often quoted — that figure uses a
+  "per bet made" convention that ignores repeat wins. Priced on the same per-resolution basis as every
+  other bet in this app (see `src/engine.js`), vig-always works out to `vig × P(losing side)` for Buy
+  (3.33% / 3.00% / 2.73%) and `layOdds × vig × P(number)` for Lay (0.83% / 1.33% / 1.89%) — cheaper than
+  vig-on-win for Lay bets, pricier for Buy. Both conventions are Monte-Carlo verified.
+- **"Decisions per hour" ≠ "rolls per hour."** A table runs roughly 100 rolls/hour, but line bets take
+  ~3.4 rolls on average to resolve; pricing hourly cost off the roll count overstates it roughly 3×.
+  One-roll bets get no such discount — a large part of why they bleed so much faster.
+- **A winning come bet is paid and taken down.** It does not stay riding the number like a place bet —
+  a frequent point of confusion the trainer now teaches explicitly, in the roll log and on the felt.
+- **Dice setting / rhythm rolling** has no controlled evidence of beating the game; casinos require dice
+  to hit a randomizing pyramid wall specifically to defeat it. Covered in the Strategy tab as a placebo.
+- The **World/Whirl** bet's 7 outcome is a wash, not a win — the any-7 leg exactly refunds the other four
+  units — so it is strictly worse than the plain Horn it is often pitched as an upgrade to.
 
-Sources consulted: [Wizard of Odds — Craps](https://wizardofodds.com/games/craps/),
-[house edge per bet made vs. per roll](https://wizardofodds.com/games/craps/appendix/2/),
-[Three Point Molly](https://wizardofodds.com/gambling/three-point-molly/), and
-[dice setting / rhythm rolling](https://wizardofodds.com/ask-the-wizard/craps/dice/).
+Sources: [Wizard of Odds — Craps](https://wizardofodds.com/games/craps/) ·
+[edge per bet made vs. per roll](https://wizardofodds.com/games/craps/appendix/2/) ·
+[Three Point Molly](https://wizardofodds.com/gambling/three-point-molly/) ·
+[dice setting](https://wizardofodds.com/ask-the-wizard/craps/dice/)
 
-## Quick start
+## Getting started
 
 Requires Node.js 18+.
 
 ```bash
+git clone https://github.com/ZeusNightBolt/CrapsTrainer.git
+cd CrapsTrainer
 npm install
-npm run dev       # local dev server (http://localhost:5173)
-npm run build     # production build to dist/
-npm run preview   # serve the production build locally
-npm run verify    # run the Monte-Carlo engine verification
+npm run dev       # local dev server → http://localhost:5173
 ```
+
+| Command | Purpose |
+|---|---|
+| `npm run dev` | Start the local development server |
+| `npm run build` | Production build to `dist/` |
+| `npm run preview` | Serve the production build locally |
+| `npm run verify` | Run the Monte-Carlo engine verification (also gates CI) |
 
 ## Project structure
 
 ```
-craps-trainer/
-├── index.html                  # dark-themed HTML shell
-├── vite.config.js
+CrapsTrainer/
+├── index.html                  # HTML shell (dark theme, PWA metas, favicon)
+├── vite.config.js              # base: "./" — builds run from any path
+├── .github/workflows/
+│   └── deploy.yml              # verify + build on every push/PR; deploy on main
 ├── src/
 │   ├── main.jsx                # React entry
-│   ├── App.jsx                 # state, controls, rail, session stats
-│   ├── engine.js               # pure resolution engine (verified)
-│   ├── bets.js                 # bet reference + odds ladder data
+│   ├── App.jsx                 # game state, controls, session stats, coach bar
+│   ├── engine.js               # pure resolution engine (verified, UI-agnostic)
+│   ├── coach.js                # next-best-move advisor — pure fn of (game, rules, chip)
+│   ├── bets.js                 # bet reference + odds ladders (rules-aware)
 │   ├── util.js                 # edge→color ramp, formatting, odds caps
-│   ├── styles.css              # dark, responsive, mobile-first
+│   ├── styles.css              # casino-feel styling, mobile-first
 │   └── components/
-│       ├── Table.jsx           # interactive felt / all bets
-│       ├── BetsReference.jsx   # sortable edge table + bars + both odds ladders
-│       ├── Strategy.jsx        # strategy write-up, rules-aware
+│       ├── Table.jsx           # interactive felt — all bets, on-tile come/DC badges
+│       ├── BetsReference.jsx   # sortable edge table + both odds ladders
+│       ├── Strategy.jsx        # strategy write-up (rules-aware)
 │       ├── Simulator.jsx       # Monte-Carlo strategy comparison
 │       ├── Dice.jsx            # pip-rendered dice
 │       └── Sparkline.jsx       # bankroll chart
-└── test/
-    └── simulate.js             # Monte-Carlo house-edge verification
+├── test/
+│   └── simulate.js             # Monte-Carlo + exact-payout verification
+└── docs/
+    └── screenshot.png
 ```
 
-## Using the engine on its own
+## Using the engine as a library
 
-`src/engine.js` is UI-agnostic and side-effect free — usable in any JS project or on a server.
+`src/engine.js` is UI-agnostic and side-effect free — usable in any JavaScript project or on a server:
 
 ```js
 import { newGame, resolve } from "./src/engine.js";
 
-let game = newGame(1000);      // { phase, point, bankroll, working, bets }
-game.bets.passline = 25;       // place a bet
-const out = resolve(game, 3, 4); // roll a 3 and a 4 (4th arg: table rules, defaults to vig-on-win + 3:1 field)
-// out.state  -> new game state (immutable; input is not mutated)
-// out.payout -> net credited this roll
-// out.events -> [{ type: 'win'|'lose'|'push'|'roll'|'info'|'sevenout', m }]
-// out.roll   -> [d1, d2, total]
+let game = newGame(1000);        // { phase, point, bankroll, working, bets }
+game.bets.passline = 25;         // place a bet
+const out = resolve(game, 3, 4); // roll a 3 and a 4
+// out.state  → new game state (input is never mutated)
+// out.payout → total credited this roll (winnings + returned stakes)
+// out.events → [{ type: 'win'|'lose'|'push'|'roll'|'info'|'sevenout', m }]
+// out.roll   → [d1, d2, total]
 game = out.state;
 ```
 
-## Deploying to GitHub Pages
+An optional fourth argument selects table variants:
+`resolve(game, d1, d2, { fieldTriple: true, vigAlways: false })` (shown values are the defaults).
 
-`vite.config.js` uses `base: "./"`, so the build works from any path, and `.github/workflows/deploy.yml` is
-already set up: it runs `npm run verify` (failing the run if any payout drifts from theory) and `npm run
-build` on every push and pull request against `main` — so PRs get a real status check — and additionally
-publishes `dist/` via GitHub's official Pages actions when the push is to `main` itself. To turn it on:
+## Deployment
 
-1. Push this repo to GitHub.
-2. In the repo's Settings → Pages, set **Source** to "GitHub Actions".
-3. Push to `main` — the workflow builds and deploys automatically. The Pages URL appears in the Actions run
-   summary and in Settings → Pages.
+The production site is hosted on **GitHub Pages**:
 
-Any static host (Netlify, Vercel, Cloudflare Pages) also works with build command `npm run build` and output
-directory `dist`.
+> **https://zeusnightbolt.github.io/CrapsTrainer/**
+
+`.github/workflows/deploy.yml` runs `npm run verify` and `npm run build` on every push and pull request
+against `main` — a payout that drifts from theory fails the check — and additionally publishes `dist/` via
+GitHub's official Pages actions on every push to `main`. No manual deploy step exists or is needed.
+
+Because `vite.config.js` sets `base: "./"`, the build is path-independent: any static host (Netlify,
+Vercel, Cloudflare Pages) works with build command `npm run build` and output directory `dist`.
 
 ## Security note
 
 `npm audit` reports an advisory in `esbuild` (a transitive dependency of Vite),
-[GHSA-67mh-4wv8-2f99](https://github.com/advisories/GHSA-67mh-4wv8-2f99). It affects only the **local dev
-server** (`vite dev`) — it does not affect the production build in `dist/` or the deployed static site,
-which ship no server. Upgrading to Vite 8 closes it but is a breaking change; pinned to Vite 5 here for
-stability. Bump when convenient with `npm audit fix --force`.
+[GHSA-67mh-4wv8-2f99](https://github.com/advisories/GHSA-67mh-4wv8-2f99). It affects only the local dev
+server — not the production build or the deployed static site, which ship no server. Upgrading to Vite 8
+closes it but is a breaking change; the project pins Vite 5 for stability.
 
 ## Disclaimer
 
 This is an educational tool. Craps is a negative-expectation game; no bet or system in it has a positive
-edge. Nothing here is gambling advice.
+edge, and nothing in this project is gambling advice.
 
 ## License
 
