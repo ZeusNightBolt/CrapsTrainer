@@ -1,16 +1,21 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import {
   resolve, newGame, blankBets, NUMBERS, LAY_ODDS, VIG, DEFAULT_RULES, totalWagered,
 } from "./engine.js";
-import { edgeColor, usd, maxOddsMultiple, ODDS_MODES } from "./util.js";
+import { usd, maxOddsMultiple } from "./util.js";
 import { PLACE_EDGE, buyEdge, layEdge, fieldEdge } from "./bets.js";
 import { getAdvice } from "./coach.js";
+import { nextRollOutcomes } from "./outcomes.js";
 import { Dice } from "./components/Dice.jsx";
 import Table from "./components/Table.jsx";
 import BetsReference from "./components/BetsReference.jsx";
 import Strategy from "./components/Strategy.jsx";
 import Simulator from "./components/Simulator.jsx";
-import Sparkline from "./components/Sparkline.jsx";
+import CoachBar from "./components/CoachBar.jsx";
+import NextRoll from "./components/NextRoll.jsx";
+import MobileBar from "./components/MobileBar.jsx";
+import RulesPanel from "./components/RulesPanel.jsx";
+import { StakePanel, SessionPanel, RollLog, PresetsPanel } from "./components/Rail.jsx";
 
 const CHIPS = [1, 5, 25, 100];
 const CHIP_STYLE = {
@@ -47,8 +52,7 @@ const INIT_STATS = { rolls: 0, points: 0, sevenOuts: 0, peak: 1000, trough: 1000
 // from the bankroll at placement, so a roll that loses every bet has payout 0
 // and a winning line bet's payout includes the returned stake. Charging the
 // stake of each bet cleared this roll (wagered-before minus wagered-after)
-// against the credited payout yields the real net: −$25 for a lost $25 pass
-// line, +$25 for a won one, $0 for a push, +$14 for a place-6 hit that stays up.
+// against the credited payout yields the real net.
 function rollDelta(before, after, payout) {
   return round2(payout - (totalWagered(before) - totalWagered(after)));
 }
@@ -68,16 +72,17 @@ export default function App() {
   const [lastRolls, setLastRolls] = useState([]);
   const [flash, setFlash] = useState(null); // { key, amt } → floating ±$ after a roll
   const [coachOn, setCoachOn] = useState(true);
+  const [stance, setStance] = useState("bal");
   const iv = useRef(null);
 
   const b = game.bets;
   const table = useMemo(() => ({ sum: totalWagered(b), drag: drag(b, rules) }), [b, rules]);
   const pnl = round2(game.bankroll - stats.start);
-  const advice = useMemo(() => getAdvice(game, rules, chip), [game, rules, chip]);
+  const outcomes = useMemo(() => nextRollOutcomes(game, rules), [game, rules]);
+  const { advice, exposure } = useMemo(() => getAdvice(game, rules, chip, stance), [game, rules, chip, stance]);
 
   // Table max for line odds: pass odds cap = flat × multiple; don't-side lay
-  // odds cap is expressed as lay-to-WIN the same multiple, so the lay amount
-  // itself can exceed flat × multiple (you lay 2:1 against the 4, etc.).
+  // odds cap is expressed as lay-to-WIN the same multiple.
   function oddsCap(path, bets) {
     const mult = maxOddsMultiple(game.point, rules.oddsMode);
     if (path === "passodds") return bets.passline * mult;
@@ -85,22 +90,21 @@ export default function App() {
     return Infinity;
   }
 
-  function canPlace(path) {
+  const canPlace = useCallback((path) => {
     if (rolling) return false;
     if (path === "passline" || path === "dontpass") return game.phase === "comeout";
     if (path === "come" || path === "dontcome") return game.phase === "point";
-    if (path === "passodds") return game.phase === "point" && b.passline > 0 && b.passodds < oddsCap(path, b);
-    if (path === "dpodds") return game.phase === "point" && b.dontpass > 0 && b.dpodds < oddsCap(path, b);
+    if (path === "passodds") return game.phase === "point" && b.passline > 0 && b.passodds < b.passline * maxOddsMultiple(game.point, rules.oddsMode);
+    if (path === "dpodds") return game.phase === "point" && b.dontpass > 0 && b.dpodds < Math.round((b.dontpass * maxOddsMultiple(game.point, rules.oddsMode)) / LAY_ODDS[game.point]);
     return true;
-  }
+  }, [rolling, game.phase, game.point, b, rules.oddsMode]);
 
   function mutate(fn) { setGame((g) => { const bets = structuredClone(g.bets); const bankroll = fn(bets, g.bankroll, g); return { ...g, bankroll: round2(bankroll), bets }; }); }
   function addPath(bets, path, amt) { if (path.includes(":")) { const [gr, n] = path.split(":"); bets[gr][n] += amt; } else bets[path] += amt; }
   function getPath(bets, path) { if (path.includes(":")) { const [gr, n] = path.split(":"); return bets[gr][n]; } return bets[path]; }
 
   // Vig-always Buy/Lay commission is a one-time, non-refundable charge paid
-  // the moment chips are added — see engine.js for why it can't just be
-  // folded into the resolution payout the way vig-on-win is.
+  // the moment chips are added — see engine.js.
   function vigSurcharge(path, amt) {
     if (!rules.vigAlways || amt <= 0 || !path.includes(":")) return 0;
     const [gr, n] = path.split(":");
@@ -109,7 +113,7 @@ export default function App() {
     return 0;
   }
 
-  function onPlace(path) {
+  const onPlace = useCallback((path) => {
     if (mode === "remove") return onRemoveChip(path);
     if (!canPlace(path)) return;
     mutate((bets, bank) => {
@@ -121,15 +125,18 @@ export default function App() {
       addPath(bets, path, amt);
       return bank - total;
     });
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, canPlace, chip, rules, game.point]);
+
   function onRemoveChip(path) {
     mutate((bets, bank) => { const cur = getPath(bets, path); if (cur <= 0) return bank; const back = Math.min(chip, cur); addPath(bets, path, -back); return bank + back; });
   }
-  function onClear(path) {
+  const onClear = useCallback((path) => {
     if (rolling) return;
     if ((path === "passline" || path === "dontpass") && game.phase === "point") return;
     mutate((bets, bank) => { const cur = getPath(bets, path); addPath(bets, path, -cur); return bank + cur; });
-  }
+  }, [rolling, game.phase]);
+
   function addMaxOdds(side) {
     if (game.phase !== "point") return;
     const pt = game.point, mult = maxOddsMultiple(pt, rules.oddsMode);
@@ -140,14 +147,27 @@ export default function App() {
       return bank;
     });
   }
-  function addMaxComeOdds(side, n) {
+  // Add a coach-specified odds amount (already sized to stance/budget/table cap).
+  function applyOdds(kind, n, amt) {
     mutate((bets, bank) => {
-      const mult = maxOddsMultiple(n, rules.oddsMode);
-      if (side === "come") { const amt = Math.min(bets.comePts[n] * mult - bets.comeOdds[n], bank); if (amt > 0) { bets.comeOdds[n] += amt; return bank - amt; } }
-      else { const amt = Math.min(Math.round(bets.dcPts[n] * mult / LAY_ODDS[n]) - bets.dcOdds[n], bank); if (amt > 0) { bets.dcOdds[n] += amt; return bank - amt; } }
-      return bank;
+      const a = Math.min(amt, bank);
+      if (a <= 0) return bank;
+      if (kind === "pass") bets.passodds += a;
+      else if (kind === "dont") bets.dpodds += a;
+      else if (kind === "come") bets.comeOdds[n] += a;
+      else return bank;
+      return bank - a;
     });
   }
+  const onComeOdds = useCallback((side, n) => {
+    mutate((bets, bank) => {
+      const mult = maxOddsMultiple(n, rules.oddsMode);
+      if (side === "come") { const cap = bets.comePts[n] * mult; const want = Math.min(chip, cap - bets.comeOdds[n]); if (want > 0 && bank >= want) { bets.comeOdds[n] += want; return bank - want; } }
+      else { const cap = Math.round(bets.dcPts[n] * mult / LAY_ODDS[n]); const want = Math.min(chip, cap - bets.dcOdds[n]); if (want > 0 && bank >= want) { bets.dcOdds[n] += want; return bank - want; } }
+      return bank;
+    });
+  }, [chip, rules.oddsMode]);
+
   function clearProps() {
     mutate((bets, bank) => {
       let back = 0;
@@ -156,27 +176,21 @@ export default function App() {
       return bank + back;
     });
   }
-  function runCoachAction(a) {
+  const runCoachAction = useCallback((a) => {
     if (rolling || !a) return;
     if (a.type === "bet") onPlace(a.path);
-    else if (a.type === "maxPass") addMaxOdds("pass");
-    else if (a.type === "maxDont") addMaxOdds("dont");
-    else if (a.type === "maxComeOdds") addMaxComeOdds("come", a.n);
+    else if (a.type === "passOdds") applyOdds("pass", null, a.amt);
+    else if (a.type === "dontOdds") applyOdds("dont", null, a.amt);
+    else if (a.type === "comeOdds") applyOdds("come", a.n, a.amt);
     else if (a.type === "clearProps") clearProps();
-  }
-  function onComeOdds(side, n) {
-    mutate((bets, bank) => {
-      const mult = maxOddsMultiple(n, rules.oddsMode);
-      if (side === "come") { const cap = bets.comePts[n] * mult; const want = Math.min(chip, cap - bets.comeOdds[n]); if (want > 0 && bank >= want) { bets.comeOdds[n] += want; return bank - want; } }
-      else { const cap = Math.round(bets.dcPts[n] * mult / LAY_ODDS[n]); const want = Math.min(chip, cap - bets.dcOdds[n]); if (want > 0 && bank >= want) { bets.dcOdds[n] += want; return bank - want; } }
-      return bank;
-    });
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rolling, onPlace]);
+
   function toggleWorking() { setGame((g) => ({ ...g, working: !g.working })); }
 
-  function roll() {
+  const roll = useCallback(() => {
     if (rolling) return;
-    if (table.sum === 0) { setEvents([{ type: "info", m: "No bets on the table. Place at least one bet first." }]); return; }
+    if (totalWagered(game.bets) === 0) { setEvents([{ type: "info", m: "No bets on the table. Place at least one bet first." }]); return; }
     setRolling(true);
     let n = 0;
     iv.current = setInterval(() => {
@@ -209,9 +223,9 @@ export default function App() {
         setRolling(false);
       }
     }, 55);
-  }
+  }, [rolling, game, rules]);
 
-  function applyPreset(kind) {
+  const applyPreset = useCallback((kind) => {
     const bets = blankBets(); let cost = 0;
     const add = (path, v) => { addPath(bets, path, v); cost += v; };
     if (kind === "pass") add("passline", 25);
@@ -220,13 +234,13 @@ export default function App() {
     if (kind === "ironcross") { add("place:5", 10); add("place:6", 12); add("place:8", 12); add("field", 10); }
     if (kind === "props") { for (const p of ["hard:4", "hard:6", "hard:8", "hard:10"]) add(p, 5); add("any7", 5); add("yo", 5); add("horn", 8); }
     setGame((g) => { const refund = totalWagered(g.bets); return { ...g, bankroll: round2(g.bankroll + refund - cost), bets }; });
-  }
+  }, []);
 
-  function reset() {
+  const reset = useCallback(() => {
     setGame(newGame(1000)); setHist([1000]); setStats(INIT_STATS);
     setEvents([{ type: "info", m: "Reset. Bankroll $1,000." }]); setDice([1, 1]);
     setLastRolls([]); setFlash(null);
-  }
+  }, []);
 
   const blendedEdge = table.sum ? (table.drag / table.sum) * 100 : 0;
 
@@ -261,33 +275,7 @@ export default function App() {
         <div className="tab rules-toggle" onClick={() => setShowRules(!showRules)}>{showRules ? "▾" : "▸"} Table rules</div>
       </div>
 
-      {showRules && (
-        <div className="panel" style={{ margin: "10px 0", display: "flex", flexWrap: "wrap", gap: 18 }}>
-          <div>
-            <div className="small" style={{ marginBottom: 6, textTransform: "uppercase", letterSpacing: ".08em" }}>Max odds</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {ODDS_MODES.map((m) => (
-                <button key={m.id} className={"btn ghost" + (rules.oddsMode === m.id ? " on" : "")} style={{ fontSize: 11, padding: "6px 10px" }}
-                  onClick={() => setRules((r) => ({ ...r, oddsMode: m.id }))}>{m.label}</button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <div className="small" style={{ marginBottom: 6, textTransform: "uppercase", letterSpacing: ".08em" }}>Field pays 12</div>
-            <div style={{ display: "flex", gap: 6 }}>
-              <button className={"btn ghost" + (rules.fieldTriple ? " on" : "")} style={{ fontSize: 11, padding: "6px 10px" }} onClick={() => setRules((r) => ({ ...r, fieldTriple: true }))}>3:1 (2.78% edge)</button>
-              <button className={"btn ghost" + (!rules.fieldTriple ? " on" : "")} style={{ fontSize: 11, padding: "6px 10px" }} onClick={() => setRules((r) => ({ ...r, fieldTriple: false }))}>2:1 (5.56% edge)</button>
-            </div>
-          </div>
-          <div>
-            <div className="small" style={{ marginBottom: 6, textTransform: "uppercase", letterSpacing: ".08em" }}>Buy/Lay vig</div>
-            <div style={{ display: "flex", gap: 6 }}>
-              <button className={"btn ghost" + (!rules.vigAlways ? " on" : "")} style={{ fontSize: 11, padding: "6px 10px" }} onClick={() => setRules((r) => ({ ...r, vigAlways: false }))}>On win only</button>
-              <button className={"btn ghost" + (rules.vigAlways ? " on" : "")} style={{ fontSize: 11, padding: "6px 10px" }} onClick={() => setRules((r) => ({ ...r, vigAlways: true }))}>Always (paid at placement)</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {showRules && <RulesPanel rules={rules} onChange={setRules} />}
 
       {tab === "table" && (
         <>
@@ -309,23 +297,8 @@ export default function App() {
             <div className="grow" />
             <button className="btn primary roll-desktop" style={{ minWidth: 160 }} onClick={roll} disabled={rolling}>{rolling ? "ROLLING…" : "ROLL DICE"}</button>
 
-            {coachOn && advice.length > 0 && (
-              <div className={"coach " + advice[0].level}>
-                <button className="coach-tag" onClick={() => setCoachOn(false)} title="Hide the coach">COACH ✕</button>
-                <div className="coach-body">
-                  <div className="coach-msg">{advice[0].msg}</div>
-                  {advice.length > 1 && <div className="coach-sub">{advice[1].msg}</div>}
-                </div>
-                {advice[0].action && (
-                  <button className="btn coach-act" disabled={rolling} onClick={() => runCoachAction(advice[0].action)}>
-                    {advice[0].action.label}
-                  </button>
-                )}
-              </div>
-            )}
-            {!coachOn && (
-              <button className="coach-restore" onClick={() => setCoachOn(true)}>Show coach</button>
-            )}
+            <CoachBar advice={advice} exposure={exposure} stance={stance} onStance={setStance}
+              on={coachOn} onToggle={setCoachOn} onAction={runCoachAction} rolling={rolling} />
           </div>
 
           {lastRolls.length > 0 && (
@@ -344,56 +317,16 @@ export default function App() {
               onPlace={onPlace} onClear={onClear} canPlace={canPlace} onComeOdds={onComeOdds} />
 
             <div className="rail">
-              <div className="panel">
-                <div className="kv"><span>On the table</span><b className="mono">{usd(table.sum)}</b></div>
-                <div className="kv"><span>Expected drag / resolution</span><b className="mono" style={{ color: edgeColor(blendedEdge) }}>−{usd(table.drag)}</b></div>
-                <div className="small" style={{ marginTop: 4 }}>Blended edge {blendedEdge.toFixed(2)}% — approx, mixes per-roll & per-decision bets. {mode === "remove" ? "Tap a bet to remove a chip." : "Tap to bet · right-click or Remove mode to take down."}</div>
-              </div>
-
-              <div className="panel">
-                <div className="small" style={{ marginBottom: 8, textTransform: "uppercase", letterSpacing: ".08em" }}>Session</div>
-                <div className="stats">
-                  <div className="stat"><div className="k">P&L</div><div className="v mono" style={{ color: pnl >= 0 ? "#34d399" : "#f43f5e" }}>{pnl >= 0 ? "+" : ""}{usd(pnl)}</div></div>
-                  <div className="stat"><div className="k">Rolls</div><div className="v mono">{stats.rolls}</div></div>
-                  <div className="stat"><div className="k">Points made</div><div className="v mono">{stats.points}</div></div>
-                  <div className="stat"><div className="k">Seven-outs</div><div className="v mono">{stats.sevenOuts}</div></div>
-                  <div className="stat"><div className="k">Peak</div><div className="v mono">{usd(stats.peak)}</div></div>
-                  <div className="stat"><div className="k">Trough</div><div className="v mono">{usd(stats.trough)}</div></div>
-                  <div className="stat"><div className="k">Best roll</div><div className="v mono" style={{ color: "#34d399" }}>+{usd(stats.best)}</div></div>
-                  <div className="stat"><div className="k">Worst roll</div><div className="v mono" style={{ color: "#f43f5e" }}>{usd(stats.worst)}</div></div>
-                </div>
-                <Sparkline data={hist} />
-              </div>
-
-              <div className="panel">
-                <div className="small" style={{ marginBottom: 6, textTransform: "uppercase", letterSpacing: ".08em" }}>Roll log</div>
-                <div className="log">{events.map((e, i) => <div key={i} className={"ev " + e.type}>{e.m}</div>)}</div>
-              </div>
-
-              <div className="panel">
-                <div className="small" style={{ marginBottom: 8, textTransform: "uppercase", letterSpacing: ".08em" }}>Strategy presets</div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                  {[["pass", "Pass line"], ["dont", "Don't Pass"], ["68", "Place 6 & 8"], ["ironcross", "Iron Cross"], ["props", "Props (bleed)"]].map(([k, l]) => (
-                    <button key={k} className="btn ghost" style={{ fontSize: 11, padding: "7px 11px" }} onClick={() => applyPreset(k)}>{l}</button>
-                  ))}
-                </div>
-                <button className="btn ghost full" style={{ marginTop: 8, fontSize: 11 }} onClick={reset}>Reset bankroll</button>
-              </div>
+              <StakePanel sum={table.sum} drag={table.drag} blendedEdge={blendedEdge} mode={mode} />
+              <NextRoll outcomes={outcomes} hasBets={table.sum > 0} />
+              <SessionPanel stats={stats} pnl={pnl} hist={hist} />
+              <RollLog events={events} />
+              <PresetsPanel onPreset={applyPreset} onReset={reset} />
             </div>
           </div>
 
-          {/* Thumb-reach action bar — fixed to the bottom on small screens only
-              (see .mobilebar in styles.css), so rolling never requires
-              scrolling back to the top control bar mid-game. */}
-          <div className="mobilebar">
-            <div className={"puck mini " + (game.phase === "point" ? "on" : "off")}>{game.phase === "point" ? game.point : "OFF"}</div>
-            <Dice dice={dice} rolling={rolling} size={30} />
-            <div className="mb-info">
-              <div className="k">{usd(table.sum)} on table</div>
-              <div className="v mono" style={{ color: game.bankroll >= stats.start ? "#34d399" : "#f43f5e" }}>{usd(game.bankroll)}</div>
-            </div>
-            <button className="btn primary grow" onClick={roll} disabled={rolling}>{rolling ? "ROLLING…" : "ROLL"}</button>
-          </div>
+          <MobileBar phase={game.phase} point={game.point} dice={dice} rolling={rolling}
+            sum={table.sum} bankroll={game.bankroll} start={stats.start} onRoll={roll} />
         </>
       )}
 
