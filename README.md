@@ -22,20 +22,29 @@ Monte-Carlo verified against published house-edge figures before any build ships
 
 ## Features
 
-### 🎓 Coach — guided play
+### 🎓 Coach — guided play with a risk budget
 A live next-best-move widget (top strip on desktop, floating thumb-reach card on mobile) that reads the
-table after every roll and prescribes the single edge-minimizing move, with the math attached and a
-one-tap button that executes it:
+table after every roll and prescribes the next move — balancing EV against **exposure** and **longevity**,
+not just pushing maximum deployment. Three selectable stances (🛡 Cautious / ⚖ Balanced / 🔥 Aggressive)
+set the risk caps; the math is identical in all three:
 
 1. **Come-out** → bet the Pass Line (1.41%) or Don't Pass (1.36%) — the only good flat bets.
-2. **Point set** → load **max odds** immediately, the only 0%-edge bet in the casino, sized correctly per
-   number and per table rules (3× / 4× / 5× under 3-4-5×).
-3. **Odds loaded** → spread with a Come bet, then back it with odds when it travels.
-4. **Three numbers working** → stop. That's the 3-Point Molly, the mathematical ceiling of "correct" craps.
+2. **Point set** → take odds (0% edge), **sized to your stance's next-7 budget** — the full table max when
+   it fits, a smaller amount when one roll would cost too much of your stack.
+3. **Spread with Come bets** — and when the board is heavy, the coach frames the Come honestly as the one
+   real cushion: a fresh Come bet in the box *wins* on a seven-out while everything else dies.
+4. **Stance ceiling reached** → stop. Two numbers cautious, three balanced/aggressive (the 3-Point Molly).
 
-The coach also runs **leak detection**: chips riding the center/field are flagged with their edge range and
-a working "take it down" action, and Place 4/10 triggers a buy-instead warning aware of the table's vig
-convention.
+Every recommendation shows a live **exposure line** — what the next 7 actually does to your stack (computed
+by the real engine, not an estimate) against your stance cap, plus the probability-weighted EV of the next
+roll. **Longevity checks** flag unit sizes that commit too much per hand ("a $100 unit with odds commits
+~$500/hand — half your stack on one decision"), and **leak detection** flags chips riding the center/field
+with a working "take it down" action.
+
+### 🎯 Next-roll panel
+A per-total P&L readout (2 through 12) computed by running the actual resolution engine on all 36 die
+combinations of the current state — so you can see exactly what every number does to you before you roll,
+with cell brightness tracking probability.
 
 ### 🎲 Table — full interactive felt
 Every real bet is playable: Pass/Don't Pass, Come/Don't Come (with correct travel mechanics and per-number

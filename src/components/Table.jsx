@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, memo } from "react";
 import { NUMBERS } from "../engine.js";
 import { edgeColor, maxOddsMultiple } from "../util.js";
 import { PLACE_EDGE, buyEdge, layEdge, fieldEdge } from "../bets.js";
@@ -6,7 +6,9 @@ import { PLACE_EDGE, buyEdge, layEdge, fieldEdge } from "../bets.js";
 const oddsLabel = (n) => ([4, 10].includes(n) ? "2:1" : [5, 9].includes(n) ? "3:2" : "6:5");
 const layLabel = (n) => ([4, 10].includes(n) ? "1:2" : [5, 9].includes(n) ? "2:3" : "5:6");
 
-export default function Table({ bets, phase, point, working, rules, onPlace, onClear, canPlace, onComeOdds }) {
+// Memoized: the felt is the heaviest subtree, and its props only change on
+// actual bet/phase/rules changes — not on dice animation, log, or stats churn.
+function Table({ bets, phase, point, working, rules, onPlace, onClear, canPlace, onComeOdds }) {
   const [showBuyLay, setShowBuyLay] = useState(false);
   const BUY_EDGE = buyEdge(rules.vigAlways);
   const LAY_EDGE = layEdge(rules.vigAlways);
@@ -154,3 +156,5 @@ export default function Table({ bets, phase, point, working, rules, onPlace, onC
     </div>
   );
 }
+
+export default memo(Table);
