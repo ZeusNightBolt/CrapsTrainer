@@ -83,11 +83,69 @@ function edgeLine(dont, multFn, n = N) {
   return ((handle - ret) / handle) * 100;
 }
 
+// Full come/don't-come lifecycle: place the box bet while a point is on, then
+// follow it wherever it travels — through point-mades, come-outs, and however
+// many rolls it takes — until the flat bet finally resolves. This exercises
+// the always-working flat rule and the travel bookkeeping end to end.
+function edgeComeFamily(dont) {
+  const die = freshDie();
+  let handle = 0, ret = 0;
+  for (let i = 0; i < N / 3; i++) {
+    let st = newGame(0);
+    let guard = 0;
+    while (st.phase === "comeout" && guard++ < 50) st = resolve(st, die(), die()).state;
+    st.bets[dont ? "dontcome" : "come"] = 10; handle += 10;
+    guard = 0;
+    while (guard++ < 400) {
+      const out = resolve(st, die(), die()); st = out.state; ret += out.payout;
+      const b = st.bets;
+      const live = (dont ? b.dontcome : b.come) > 0 || NUMBERS.some((k) => (dont ? b.dcPts[k] : b.comePts[k]) > 0);
+      if (!live) break;
+    }
+  }
+  return ((handle - ret) / handle) * 100;
+}
+
 const results = [];
 const check = (label, val, theory, assert = true) => results.push({ label, val, theory, assert });
 
+// Deterministic single-roll rule checks — exact payouts for the fiddly cases
+// (odds on/off, pushes, working toggles) that Monte-Carlo averages can hide.
+const ruleResults = [];
+function rule(label, setup, d1, d2, expectPayout, inspect) {
+  const st = newGame(0);
+  setup(st);
+  const out = resolve(st, d1, d2);
+  const okPayout = Math.abs(out.payout - expectPayout) < 1e-9;
+  const okState = inspect ? inspect(out.state) : true;
+  ruleResults.push({ label, ok: okPayout && okState, got: out.payout, want: expectPayout });
+}
+
+// Come odds OFF on the come-out are no-action: returned when the number hits…
+rule("Come odds OFF returned on hit", (s) => { s.phase = "comeout"; s.working = false; s.bets.comePts[9] = 25; s.bets.comeOdds[9] = 100; },
+  4, 5, 25 * 2 + 100);
+// …and returned when the 7 shows (flat still loses).
+rule("Come odds OFF returned on 7", (s) => { s.phase = "comeout"; s.working = false; s.bets.comePts[9] = 25; s.bets.comeOdds[9] = 100; },
+  3, 4, 100);
+// With the working toggle ON, come odds pay true odds on the come-out.
+rule("Come odds WORKING paid on hit", (s) => { s.phase = "comeout"; s.working = true; s.bets.comePts[9] = 25; s.bets.comeOdds[9] = 100; },
+  4, 5, 25 * 2 + 100 * (1 + 1.5));
+// A winning come bet is paid and taken down — it must not stay on the number.
+rule("Winning come bet comes down", (s) => { s.phase = "point"; s.point = 5; s.bets.comePts[6] = 25; },
+  3, 3, 50, (st) => st.bets.comePts[6] === 0);
+// Don't-come lay odds always work, come-out included.
+rule("DC lay odds work on come-out", (s) => { s.phase = "comeout"; s.working = false; s.bets.dcPts[4] = 30; s.bets.dcOdds[4] = 40; },
+  3, 4, 30 * 2 + 40 * 1.5);
+// Hardways are no-action on the come-out when not working (bet stays up).
+rule("Hardways idle when OFF", (s) => { s.phase = "comeout"; s.working = false; s.bets.hard[8] = 10; },
+  4, 4, 0, (st) => st.bets.hard[8] === 10);
+// Don't Pass bar-12: push, stake returned.
+rule("Don't Pass bar-12 push", (s) => { s.phase = "comeout"; s.bets.dontpass = 25; }, 6, 6, 25);
+
 check("Pass Line", edgeLine(false, null), 1.41);
 check("Don't Pass", edgeLine(true, null), 1.36);
+check("Come", edgeComeFamily(false), 1.41);
+check("Don't Come", edgeComeFamily(true), 1.36);
 
 // Table-odds ladder — blended edge as the odds multiple grows. 345 = the
 // modern 3-4-5x standard (3x on 4/10, 4x on 5/9, 5x on 6/8). Small edges need
@@ -156,6 +214,13 @@ for (const n of NUMBERS)
     40, n === 4 ? 10 : 4, vigAlwaysRules, 40 * LAY_ODDS[n] * 0.05), LAY_ALWAYS_EDGE[n], false);
 
 let failed = 0;
+console.log(`\n  rule checks (exact payouts)`);
+console.log("  " + "-".repeat(46));
+for (const r of ruleResults) {
+  if (!r.ok) failed++;
+  console.log(`  ${r.ok ? "ok  " : "FAIL"} ${r.label}` + (r.ok ? "" : ` (got ${r.got}, want ${r.want})`));
+}
+
 console.log(`\n  bet              realized   theory   delta`);
 console.log("  " + "-".repeat(46));
 for (const r of results) {

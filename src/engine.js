@@ -163,26 +163,44 @@ export function resolve(state, d1, d2, rules = DEFAULT_RULES) {
     }
   }
 
-  // ---- come / don't-come points (flat always works; odds per toggle) ----
+  // ---- come / don't-come points ----
+  // Casino rules encoded here:
+  //  * A traveled come/don't-come FLAT bet always works, come-out included.
+  //  * Come ODDS are off on the come-out (unless the working toggle is on).
+  //    Odds that are OFF are no-action either way: returned when the number
+  //    hits AND returned when the 7 shows — never paid, never lost.
+  //  * Don't-come lay odds always work (the don't side is never turned off).
+  //  * A winning come/don't-come bet is PAID AND TAKEN DOWN — it does not
+  //    stay riding on the number like a place bet. Re-bet the come box to
+  //    keep a number covered (that's the whole 3-Point Molly loop).
   for (const n of NUMBERS) {
     if (B.comePts[n] > 0) {
       if (t === n) {
-        payout += B.comePts[n] * 2; log("win", `Come ${n} +$${round(B.comePts[n])}`);
-        if (B.comeOdds[n] > 0) { payout += B.comeOdds[n] * (1 + TRUE_ODDS[n]); log("win", `Come ${n} odds`); }
+        payout += B.comePts[n] * 2;
+        log("win", `Come ${n} wins +$${round(B.comePts[n])} — paid and taken down`);
+        if (B.comeOdds[n] > 0) {
+          if (numbersWork) { payout += B.comeOdds[n] * (1 + TRUE_ODDS[n]); log("win", `Come ${n} odds +$${round(B.comeOdds[n] * TRUE_ODDS[n])}`); }
+          else { payout += B.comeOdds[n]; log("push", `Come ${n} odds were OFF (come-out) — $${round(B.comeOdds[n])} returned`); }
+        }
         B.comePts[n] = 0; B.comeOdds[n] = 0;
       } else if (t === 7) {
         log("lose", `Come ${n} −$${round(B.comePts[n])}`);
-        if (!numbersWork && B.comeOdds[n] > 0) payout += B.comeOdds[n]; // odds off → returned
+        if (B.comeOdds[n] > 0) {
+          if (numbersWork) log("lose", `Come ${n} odds −$${round(B.comeOdds[n])}`);
+          else { payout += B.comeOdds[n]; log("push", `Come ${n} odds were OFF (come-out) — $${round(B.comeOdds[n])} returned`); }
+        }
         B.comePts[n] = 0; B.comeOdds[n] = 0;
       }
     }
     if (B.dcPts[n] > 0) {
       if (t === 7) {
-        payout += B.dcPts[n] * 2; log("win", `Don't Come ${n} wins`);
-        if (B.dcOdds[n] > 0) payout += B.dcOdds[n] * (1 + LAY_ODDS[n]);
+        payout += B.dcPts[n] * 2;
+        log("win", `Don't Come ${n} wins +$${round(B.dcPts[n])} — paid and taken down`);
+        if (B.dcOdds[n] > 0) { payout += B.dcOdds[n] * (1 + LAY_ODDS[n]); log("win", `Don't Come ${n} lay odds +$${round(B.dcOdds[n] * LAY_ODDS[n])}`); }
         B.dcPts[n] = 0; B.dcOdds[n] = 0;
       } else if (t === n) {
-        log("lose", `Don't Come ${n} loses`); B.dcPts[n] = 0; B.dcOdds[n] = 0;
+        log("lose", `Don't Come ${n} −$${round(B.dcPts[n] + B.dcOdds[n])}`);
+        B.dcPts[n] = 0; B.dcOdds[n] = 0;
       }
     }
   }
@@ -219,22 +237,22 @@ export function resolve(state, d1, d2, rules = DEFAULT_RULES) {
     if (B.dontpass > 0) {
       if (t === 7 || t === 11) { log("lose", "Don't Pass loses"); B.dontpass = 0; }
       else if (t === 2 || t === 3) { payout += B.dontpass * 2; log("win", "Don't Pass wins"); B.dontpass = 0; }
-      else if (t === 12) { payout += B.dontpass; log("push", "Don't Pass pushes (bar 12)"); B.dontpass = 0; }
+      else if (t === 12) { payout += B.dontpass; log("push", "Don't Pass pushes (bar 12) — stake returned"); B.dontpass = 0; }
     }
     if (NUMBERS.includes(t)) { s.phase = "point"; s.point = t; log("info", `Point is ${t} — puck ON`); }
     else if (ev.length === 0) log("info", `Come-out ${t}`);
   } else {
     const pt = s.point;
     if (B.come > 0) {
-      if (t === 7 || t === 11) { payout += B.come * 2; log("win", "Come wins"); B.come = 0; }
-      else if ([2, 3, 12].includes(t)) { log("lose", "Come loses (craps)"); B.come = 0; }
-      else { B.comePts[t] += B.come; B.come = 0; log("info", `Come travels to ${t}`); }
+      if (t === 7 || t === 11) { payout += B.come * 2; log("win", `Come wins on ${t} +$${round(B.come)}`); B.come = 0; }
+      else if ([2, 3, 12].includes(t)) { log("lose", `Come loses (craps ${t}) −$${round(B.come)}`); B.come = 0; }
+      else { B.comePts[t] += B.come; B.come = 0; log("info", `Come travels to ${t} — wins if ${t} repeats before a 7`); }
     }
     if (B.dontcome > 0) {
-      if (t === 7 || t === 11) { log("lose", "Don't Come loses"); B.dontcome = 0; }
-      else if (t === 2 || t === 3) { payout += B.dontcome * 2; log("win", "Don't Come wins"); B.dontcome = 0; }
-      else if (t === 12) { payout += B.dontcome; log("push", "Don't Come pushes"); B.dontcome = 0; }
-      else { B.dcPts[t] += B.dontcome; B.dontcome = 0; log("info", `Don't Come travels to ${t}`); }
+      if (t === 7 || t === 11) { log("lose", `Don't Come loses (${t}) −$${round(B.dontcome)}`); B.dontcome = 0; }
+      else if (t === 2 || t === 3) { payout += B.dontcome * 2; log("win", `Don't Come wins (craps ${t}) +$${round(B.dontcome)}`); B.dontcome = 0; }
+      else if (t === 12) { payout += B.dontcome; log("push", "Don't Come pushes (bar 12) — stake returned"); B.dontcome = 0; }
+      else { B.dcPts[t] += B.dontcome; B.dontcome = 0; log("info", `Don't Come travels to ${t} — wins on a 7 before the ${t}`); }
     }
     if (t === pt) {
       if (B.passline > 0) { payout += B.passline * 2; log("win", "Pass Line wins (point made)"); B.passline = 0; }
