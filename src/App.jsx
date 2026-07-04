@@ -72,12 +72,22 @@ export default function App() {
   const table = useMemo(() => ({ sum: totalWagered(b), drag: drag(b, rules) }), [b, rules]);
   const pnl = round2(game.bankroll - stats.start);
 
+  // Table max for line odds: pass odds cap = flat × multiple; don't-side lay
+  // odds cap is expressed as lay-to-WIN the same multiple, so the lay amount
+  // itself can exceed flat × multiple (you lay 2:1 against the 4, etc.).
+  function oddsCap(path, bets) {
+    const mult = maxOddsMultiple(game.point, rules.oddsMode);
+    if (path === "passodds") return bets.passline * mult;
+    if (path === "dpodds") return Math.round((bets.dontpass * mult) / LAY_ODDS[game.point]);
+    return Infinity;
+  }
+
   function canPlace(path) {
     if (rolling) return false;
     if (path === "passline" || path === "dontpass") return game.phase === "comeout";
     if (path === "come" || path === "dontcome") return game.phase === "point";
-    if (path === "passodds") return game.phase === "point" && b.passline > 0 && b.passodds < b.passline * maxOddsMultiple(game.point, rules.oddsMode);
-    if (path === "dpodds") return game.phase === "point" && b.dontpass > 0;
+    if (path === "passodds") return game.phase === "point" && b.passline > 0 && b.passodds < oddsCap(path, b);
+    if (path === "dpodds") return game.phase === "point" && b.dontpass > 0 && b.dpodds < oddsCap(path, b);
     return true;
   }
 
@@ -99,11 +109,13 @@ export default function App() {
   function onPlace(path) {
     if (mode === "remove") return onRemoveChip(path);
     if (!canPlace(path)) return;
-    const vig = vigSurcharge(path, chip);
     mutate((bets, bank) => {
-      const total = chip + vig;
+      // clamp odds bets to the table max so the last chip can't overshoot the cap
+      const amt = Math.min(chip, oddsCap(path, bets) - getPath(bets, path));
+      if (amt <= 0) return bank;
+      const total = amt + vigSurcharge(path, amt);
       if (bank < total) return bank;
-      addPath(bets, path, chip);
+      addPath(bets, path, amt);
       return bank - total;
     });
   }

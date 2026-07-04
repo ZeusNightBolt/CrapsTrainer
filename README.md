@@ -56,6 +56,13 @@ Hard 6         9.09%   theory 9.09%
 Any Seven     16.67%   theory 16.67%
 ```
 
+Beyond the per-bet edge simulations, the verifier also runs **full come / don't-come lifecycle
+simulations** (box → travel → resolution, through point-mades and come-outs, asserting the 1.41% / 1.36%
+edges) and a set of **exact-payout rule checks** for the fiddly cases averages can hide: come odds that are
+OFF on a come-out are no-action (returned whether the number hits or the 7 shows), don't-come lay odds always
+work, a winning come bet is paid *and taken down* (the real casino rule — it does not stay riding the
+number), hardways idle when off, and the bar-12 push returns the stake.
+
 All edges derive from the 36-outcome dice sample space and corroborate
 [Wizard of Odds](https://wizardofodds.com/games/craps/), the standard published reference. Buy/Lay figures
 default to the modern convention of a 5% vig charged on the win only; the app also supports "vig always"

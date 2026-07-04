@@ -196,6 +196,21 @@ body {
   box-shadow: 0 2px 6px rgba(0,0,0,.5);
 }
 
+/* come / don't-come bets riding a number — shown on the tile itself, like the
+   real layout. Tapping one adds odds behind it. */
+.cbadge {
+  position: absolute; bottom: -9px; z-index: 2;
+  border-radius: 999px; padding: 3px 8px; min-height: 22px;
+  font-size: 9px; font-weight: 800; letter-spacing: .02em;
+  cursor: pointer; white-space: nowrap;
+  box-shadow: 0 3px 8px rgba(0,0,0,.55);
+  animation: chipdrop .16s ease-out;
+  -webkit-tap-highlight-color: transparent;
+}
+.cbadge.come { left: -5px; background: #06272e; border: 1.5px solid #22d3ee; color: #67e8f9; }
+.cbadge.dc { right: -5px; background: #251233; border: 1.5px solid #c084fc; color: #d8b4fe; }
+.cbadge:active { transform: scale(.94); }
+
 /* recent-rolls strip */
 .rollstrip { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 10px; scrollbar-width: none; }
 .rollstrip::-webkit-scrollbar { display: none; }
@@ -217,9 +232,14 @@ body {
 
 /* traveling come/dc bets */
 .travel { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-.trav { border: 1px solid #2c6b54; background: rgba(52,211,153,.08); border-radius: 9px; padding: 6px 9px; font-size: 11px; display: flex; gap: 8px; align-items: center; }
+.trav { border: 1px solid #2c6b54; background: rgba(52,211,153,.08); border-radius: 10px; padding: 7px 10px; font-size: 11px; display: flex; gap: 9px; align-items: center; }
 .trav b { color: #a7f3d0; }
-.trav .odds-btn { border: 1px solid #2c6b54; background: transparent; color: #a7f3d0; border-radius: 6px; padding: 4px 8px; font-size: 10px; cursor: pointer; font-weight: 700; }
+.trav .odds-btn {
+  border: 1px solid #2c6b54; background: rgba(52,211,153,.12); color: #a7f3d0;
+  border-radius: 7px; padding: 6px 11px; min-height: 30px; font-size: 10px; cursor: pointer; font-weight: 700;
+  -webkit-tap-highlight-color: transparent;
+}
+.trav .odds-btn:active { transform: scale(.95); }
 
 /* chips — edge stripes + inlay ring like the real thing */
 .chipbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
@@ -335,8 +355,12 @@ a { color: #22d3ee; }
   .g6 { grid-template-columns: repeat(3,1fr); }
   .g4 { grid-template-columns: repeat(2,1fr); }
   .brand .sub { display: none; }
-  .controlbar { top: 58px; }
+  /* the two-row topbar is taller than any fixed offset — let it scroll away
+     (the mobilebar mirrors bankroll/dice/puck) and pin the betting controls */
+  .topbar { position: static; }
+  .controlbar { top: 0; }
   .roll-desktop { display: none; }
+  .tiles.g6 { row-gap: 16px; }        /* room for come/DC badges between rows */
   .tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
   .tabs::-webkit-scrollbar { display: none; }
   .tab { white-space: nowrap; flex-shrink: 0; }

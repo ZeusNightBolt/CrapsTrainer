@@ -43,6 +43,7 @@ export default function Table({ bets, phase, point, working, rules, onPlace, onC
     const a = bets.place[n];
     const isPt = point === n;
     const e = PLACE_EDGE[n];
+    const come = bets.comePts[n], dc = bets.dcPts[n];
     return (
       <div className="tile num" onClick={() => onPlace("place:" + n)} onContextMenu={(e2) => hold(e2, "place:" + n)}
         style={{ borderColor: isPt ? "#34d399" : a ? edgeColor(e) : "var(--line-2)" }}>
@@ -50,6 +51,18 @@ export default function Table({ bets, phase, point, working, rules, onPlace, onC
         <div className="big mono">{n}</div>
         <div className="te mono" style={{ color: edgeColor(e) }}>{e}%</div>
         {a > 0 && <div className="amt mono" style={{ color: edgeColor(e) }}>${a}</div>}
+        {come > 0 && (
+          <button className="cbadge come mono" title={`Come bet on ${n} — tap to add odds`}
+            onClick={(ev) => { ev.stopPropagation(); onComeOdds("come", n); }}>
+            C ${come}{bets.comeOdds[n] > 0 ? `+${bets.comeOdds[n]}` : ""}
+          </button>
+        )}
+        {dc > 0 && (
+          <button className="cbadge dc mono" title={`Don't Come on ${n} — tap to add lay odds`}
+            onClick={(ev) => { ev.stopPropagation(); onComeOdds("dc", n); }}>
+            DC ${dc}{bets.dcOdds[n] > 0 ? `+${bets.dcOdds[n]}` : ""}
+          </button>
+        )}
       </div>
     );
   };
@@ -80,13 +93,13 @@ export default function Table({ bets, phase, point, working, rules, onPlace, onC
 
       {travel.length > 0 && (
         <>
-          <div className="sec">Traveling come bets</div>
+          <div className="sec">Come / Don't Come riding the numbers — a winner is paid and taken down (casino rule)</div>
           <div className="travel">
             {travel.map((t, i) => (
               <div className="trav" key={i}>
                 <b>{t.side === "come" ? "Come" : "Don't"} {t.n}</b>
                 <span className="mono">${t.flat}{t.odds ? ` +$${t.odds} odds` : ""}</span>
-                <button className="odds-btn" onClick={() => onComeOdds(t.side, t.n)}>+odds</button>
+                <button className="odds-btn" onClick={() => onComeOdds(t.side, t.n)}>+ odds</button>
               </div>
             ))}
           </div>
