@@ -4,6 +4,7 @@ import {
 } from "./engine.js";
 import { edgeColor, usd, maxOddsMultiple, ODDS_MODES } from "./util.js";
 import { PLACE_EDGE, buyEdge, layEdge, fieldEdge } from "./bets.js";
+import { getAdvice } from "./coach.js";
 import { Dice } from "./components/Dice.jsx";
 import Table from "./components/Table.jsx";
 import BetsReference from "./components/BetsReference.jsx";
@@ -66,11 +67,13 @@ export default function App() {
   const [showRules, setShowRules] = useState(false);
   const [lastRolls, setLastRolls] = useState([]);
   const [flash, setFlash] = useState(null); // { key, amt } → floating ±$ after a roll
+  const [coachOn, setCoachOn] = useState(true);
   const iv = useRef(null);
 
   const b = game.bets;
   const table = useMemo(() => ({ sum: totalWagered(b), drag: drag(b, rules) }), [b, rules]);
   const pnl = round2(game.bankroll - stats.start);
+  const advice = useMemo(() => getAdvice(game, rules, chip), [game, rules, chip]);
 
   // Table max for line odds: pass odds cap = flat × multiple; don't-side lay
   // odds cap is expressed as lay-to-WIN the same multiple, so the lay amount
@@ -131,10 +134,35 @@ export default function App() {
     if (game.phase !== "point") return;
     const pt = game.point, mult = maxOddsMultiple(pt, rules.oddsMode);
     mutate((bets, bank) => {
-      if (side === "pass" && bets.passline > 0) { const want = bets.passline * mult - bets.passodds; if (want > 0 && bank >= want) { bets.passodds += want; return bank - want; } }
-      if (side === "dont" && bets.dontpass > 0) { const maxLay = Math.round(bets.dontpass * mult / LAY_ODDS[pt]); const want = maxLay - bets.dpodds; if (want > 0 && bank >= want) { bets.dpodds += want; return bank - want; } }
+      // partial odds are always allowed — take whatever the bankroll covers
+      if (side === "pass" && bets.passline > 0) { const amt = Math.min(bets.passline * mult - bets.passodds, bank); if (amt > 0) { bets.passodds += amt; return bank - amt; } }
+      if (side === "dont" && bets.dontpass > 0) { const amt = Math.min(Math.round(bets.dontpass * mult / LAY_ODDS[pt]) - bets.dpodds, bank); if (amt > 0) { bets.dpodds += amt; return bank - amt; } }
       return bank;
     });
+  }
+  function addMaxComeOdds(side, n) {
+    mutate((bets, bank) => {
+      const mult = maxOddsMultiple(n, rules.oddsMode);
+      if (side === "come") { const amt = Math.min(bets.comePts[n] * mult - bets.comeOdds[n], bank); if (amt > 0) { bets.comeOdds[n] += amt; return bank - amt; } }
+      else { const amt = Math.min(Math.round(bets.dcPts[n] * mult / LAY_ODDS[n]) - bets.dcOdds[n], bank); if (amt > 0) { bets.dcOdds[n] += amt; return bank - amt; } }
+      return bank;
+    });
+  }
+  function clearProps() {
+    mutate((bets, bank) => {
+      let back = 0;
+      for (const k of ["field", "any7", "anycraps", "yo", "aces", "boxcars", "aceDeuce", "horn", "ce", "world"]) { back += bets[k]; bets[k] = 0; }
+      for (const n of [4, 6, 8, 10]) { back += bets.hard[n]; bets.hard[n] = 0; }
+      return bank + back;
+    });
+  }
+  function runCoachAction(a) {
+    if (rolling || !a) return;
+    if (a.type === "bet") onPlace(a.path);
+    else if (a.type === "maxPass") addMaxOdds("pass");
+    else if (a.type === "maxDont") addMaxOdds("dont");
+    else if (a.type === "maxComeOdds") addMaxComeOdds("come", a.n);
+    else if (a.type === "clearProps") clearProps();
   }
   function onComeOdds(side, n) {
     mutate((bets, bank) => {
@@ -280,6 +308,24 @@ export default function App() {
             {game.phase === "point" && b.dontpass > 0 && <button className="btn ghost" onClick={() => addMaxOdds("dont")}>+ Max Lay Odds</button>}
             <div className="grow" />
             <button className="btn primary roll-desktop" style={{ minWidth: 160 }} onClick={roll} disabled={rolling}>{rolling ? "ROLLING…" : "ROLL DICE"}</button>
+
+            {coachOn && advice.length > 0 && (
+              <div className={"coach " + advice[0].level}>
+                <button className="coach-tag" onClick={() => setCoachOn(false)} title="Hide the coach">COACH ✕</button>
+                <div className="coach-body">
+                  <div className="coach-msg">{advice[0].msg}</div>
+                  {advice.length > 1 && <div className="coach-sub">{advice[1].msg}</div>}
+                </div>
+                {advice[0].action && (
+                  <button className="btn coach-act" disabled={rolling} onClick={() => runCoachAction(advice[0].action)}>
+                    {advice[0].action.label}
+                  </button>
+                )}
+              </div>
+            )}
+            {!coachOn && (
+              <button className="coach-restore" onClick={() => setCoachOn(true)}>Show coach</button>
+            )}
           </div>
 
           {lastRolls.length > 0 && (

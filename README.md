@@ -15,6 +15,11 @@ how much variance to buy for a fixed, small expected cost.
   place, buy, lay, hardways, field, and the full center props including World/Whirl), toggle come-out
   working, roll the dice, and watch every bet resolve with a plain-English log, a bankroll sparkline, and
   session stats.
+- **Coach** — a live next-best-move widget (top strip on desktop, floating thumb-reach card on mobile). It
+  reads the table after every roll and tells you the single edge-minimizing move with the math behind it —
+  bet the line, load max odds the moment a point exists, spread with Come + odds to three numbers, then stop
+  — and a one-tap button that executes it. It also flags leaks (chips on the center/field, Place 4/10 when
+  buying is cheaper) with a take-it-down action. Dismissable if you want to fly solo.
 - **Table rules** — three real casino variants you'll actually run into, live-wired into every number on
   every tab: max odds (1x / 2x / 3-4-5x / 5x / 10x / 20x / 100x), the Field paytable (12 pays 2:1 or 3:1),
   and the Buy/Lay vig convention (charged on a win only, or up front at placement).
