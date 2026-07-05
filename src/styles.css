@@ -475,10 +475,13 @@ a { color: #22d3ee; }
 /* number / point boxes across the top */
 .numbox { background: rgba(6, 28, 20, .35); }
 .numbox .numeral {
-  font-size: 5.4cqw; font-weight: 800; letter-spacing: .04em;
+  font-size: 5cqw; font-weight: 800; letter-spacing: .02em;
   color: #f1fbf6; text-shadow: 0 0.3cqw 0.6cqw rgba(0,0,0,.5);
   font-family: Georgia, "Times New Roman", serif; line-height: 1;
+  max-width: 100%; white-space: nowrap; text-align: center;
 }
+/* SIX / NINE are spelled out on a real layout — size them to fit the box */
+.numbox .numeral.word { font-size: 3.1cqw; letter-spacing: .04em; }
 .numbox.pt-on { border-color: #fff; box-shadow: 0 0 2.4cqw rgba(255,255,255,.3), inset 0 0 2cqw rgba(255,255,255,.12); }
 .puckdot {
   position: absolute; top: -1.2cqw; left: 50%; transform: translateX(-50%); z-index: 4;
@@ -506,12 +509,15 @@ a { color: #22d3ee; }
   color: #eefcf4; text-shadow: 0 0.3cqw 0.7cqw rgba(0,0,0,.5);
   font-family: Georgia, "Times New Roman", serif; line-height: 1;
 }
+/* PASS LINE — an outlined band with a thin red accent line, like the real
+   layout (not a solid red fill). The felt shows through. */
 .passband {
   grid-area: pass;
-  background: linear-gradient(180deg, rgba(180, 40, 55, .16), rgba(120, 25, 38, .28));
-  border-color: rgba(248, 180, 190, .55);
+  background: rgba(7, 30, 21, .3);
+  border-color: rgba(232, 238, 240, .7);
+  box-shadow: inset 0 0 0 0.3cqw rgba(206, 42, 58, .6);
 }
-.passband .bigband { letter-spacing: .5em; text-indent: .5em; color: #ffe9ec; }
+.passband .bigband { letter-spacing: .5em; text-indent: .5em; color: #f5f8fa; }
 .bandsub { font-size: 1.7cqw; letter-spacing: .06em; color: rgba(202, 232, 217, .68); text-transform: uppercase; margin-top: 0.4cqw; }
 .fieldband { background: rgba(8, 34, 24, .22); flex-direction: row; gap: 2cqw; }
 .fieldband .fl, .dpband .fl {
@@ -520,15 +526,16 @@ a { color: #22d3ee; }
 }
 .fieldband .fnums { font-size: 3cqw; font-weight: 700; letter-spacing: .32em; color: #dff5ea; }
 .fieldband .circ { border: 0.3cqw solid #fde68a; color: #fde68a; border-radius: 50%; padding: 0 0.9cqw; letter-spacing: 0; }
+/* DON'T PASS BAR — a plain outlined strip, no red wash */
 .dpband {
   flex-direction: row; gap: 1.4cqw;
-  background: linear-gradient(180deg, rgba(180, 40, 55, .1), rgba(120, 25, 38, .18));
-  border-color: rgba(248, 180, 190, .4);
+  background: rgba(7, 30, 21, .22);
+  border-color: rgba(210, 220, 224, .45);
 }
-.dpband .fl { font-size: 2.5cqw; }
+.dpband .fl { font-size: 2.5cqw; color: #e7eef1; }
 .dpband .bar12 {
-  font-size: 2cqw; font-weight: 800; color: #ffd7dd;
-  border: 0.3cqw solid rgba(248,180,190,.6); border-radius: 999px; padding: 0.3cqw 1.1cqw;
+  font-size: 2cqw; font-weight: 800; color: #dfe7ea;
+  border: 0.3cqw solid rgba(210, 220, 224, .55); border-radius: 999px; padding: 0.3cqw 1.1cqw;
 }
 .oddszone { border-style: dashed; border-color: rgba(125, 211, 252, .4); background: rgba(8, 40, 60, .18); }
 .oddszone .pl { font-size: 1.9cqw; letter-spacing: .08em; color: #7dd3fc; font-weight: 800; text-transform: uppercase; text-align: center; line-height: 1.1; }

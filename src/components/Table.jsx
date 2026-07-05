@@ -74,7 +74,7 @@ function Table({ bets, phase, point, working, rules, onPlace, onClear, canPlace,
         onClick={() => tap("place:" + n)}
         onContextMenu={(e) => { e.preventDefault(); onClear("place:" + n); }}>
         {isPt && <div className="puckdot" title={`The point is ${n}`}>ON</div>}
-        <div className="numeral">{spell[n]}</div>
+        <div className={"numeral" + (/[A-Z]/.test(spell[n]) ? " word" : "")}>{spell[n]}</div>
         {dc > 0 && (
           <button className="ridechip dc mono" title={`Don't Come $${dc} on ${n} — tap for lay odds`}
             onClick={(e) => { e.stopPropagation(); onComeOdds("dc", n); }}>
