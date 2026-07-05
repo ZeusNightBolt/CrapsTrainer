@@ -185,10 +185,10 @@ export default function App() {
     setRolling(true);
     setUndoStack([]); // dice in the air — betting decisions are final
     let n = 0;
-    // ~1.5s of tumble before the result lands: 17 shake frames at 90ms
+    // ~1.1s of tumble before the result lands: 12 shake frames at 90ms
     iv.current = setInterval(() => {
       setDice([1 + rnd6(), 1 + rnd6()]);
-      if (++n > 16) {
+      if (++n > 11) {
         clearInterval(iv.current);
         const d1 = 1 + rnd6(), d2 = 1 + rnd6();
         setDice([d1, d2]);
@@ -295,6 +295,7 @@ export default function App() {
               <button className={mode === "remove" ? "on" : ""} onClick={() => setMode("remove")}>Remove</button>
             </div>
             <button className="btn ghost" onClick={undo} disabled={!undoStack.length || rolling} title="Undo the last betting action (rolls are final)">↩ Undo</button>
+            <button className="btn ghost" onClick={reset} disabled={rolling} title="Clear the table and reset the bankroll to $1,000">↺ Reset $</button>
             <button className={"btn" + (game.working ? " on" : "")} onClick={toggleWorking} title="Are place/buy/hard/come-odds live on the come-out?">
               Come-out: {game.working ? "WORKING" : "OFF"}
             </button>

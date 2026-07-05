@@ -213,7 +213,42 @@ for (const n of NUMBERS)
   check(`Lay ${n} (vig always)`, edgeStay((s, v) => (s.bets.lay[n] = v), (t) => t === 7, (t) => t === n,
     40, n === 4 ? 10 : 4, vigAlwaysRules, 40 * LAY_ODDS[n] * 0.05), LAY_ALWAYS_EDGE[n], false);
 
+// ---------------------------------------------------------------------------
+// Dice fairness — the app and this verifier both roll two INDEPENDENT dice as
+// `1 + floor(rng()*6)`. Prove that method reproduces the true probabilities:
+// each face is 1/6, and each total t occurs WAYS[t]/36 of the time. This gates
+// CI, so any drift toward loaded dice fails the build.
+// ---------------------------------------------------------------------------
+const DICE_N = 3_000_000;
+const DICE_TOL = 0.004; // 0.4 percentage-point tolerance at this sample size
+const WAYS = { 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 7: 6, 8: 5, 9: 4, 10: 3, 11: 2, 12: 1 };
+const diceResults = [];
+{
+  const die = freshDie();
+  const faces = new Array(7).fill(0);
+  const totals = new Array(13).fill(0);
+  for (let i = 0; i < DICE_N; i++) {
+    const a = die(), b = die();
+    faces[a]++; faces[b]++; totals[a + b]++;
+  }
+  for (let f = 1; f <= 6; f++) {
+    const p = faces[f] / (DICE_N * 2), want = 1 / 6;
+    diceResults.push({ label: `face ${f}`, p, want, ok: Math.abs(p - want) <= DICE_TOL });
+  }
+  for (let t = 2; t <= 12; t++) {
+    const p = totals[t] / DICE_N, want = WAYS[t] / 36;
+    diceResults.push({ label: `total ${t} (${WAYS[t]}/36)`, p, want, ok: Math.abs(p - want) <= DICE_TOL });
+  }
+}
+
 let failed = 0;
+console.log(`\n  dice fairness (${(DICE_N / 1e6)}M rolls of two independent dice)`);
+console.log("  " + "-".repeat(46));
+for (const r of diceResults) {
+  if (!r.ok) failed++;
+  console.log(`  ${r.ok ? "ok  " : "FAIL"} ${r.label.padEnd(18)} ${(r.p * 100).toFixed(2)}%  (theory ${(r.want * 100).toFixed(2)}%)`);
+}
+
 console.log(`\n  rule checks (exact payouts)`);
 console.log("  " + "-".repeat(46));
 for (const r of ruleResults) {
@@ -236,5 +271,5 @@ for (const r of results) {
   );
 }
 console.log("");
-if (failed) { console.error(`  ${failed} bet(s) drifted > ${TOL}% from theory - engine may be broken.\n`); process.exit(1); }
-console.log(`  All asserted bets within +/-${TOL}% of theory. Engine verified.\n`);
+if (failed) { console.error(`  ${failed} check(s) drifted from theory - engine or dice may be broken.\n`); process.exit(1); }
+console.log(`  All asserted bets within +/-${TOL}% of theory, dice provably fair. Engine verified.\n`);
