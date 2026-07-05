@@ -1,6 +1,6 @@
 import { useState, useRef, memo } from "react";
 import { NUMBERS } from "../engine.js";
-import { edgeColor, maxOddsMultiple } from "../util.js";
+import { edgeColor, maxOddsMultiple, chipTier } from "../util.js";
 import { PLACE_EDGE, buyEdge, layEdge, fieldEdge } from "../bets.js";
 
 // The betting mat — one full side of a real craps table, drawn as tappable
@@ -60,7 +60,7 @@ function Table({ bets, phase, point, working, rules, onPlace, onClear, canPlace,
         onClick={path ? () => tap(path) : undefined}
         onContextMenu={path ? (e) => { e.preventDefault(); onClear(path); } : undefined}>
         {children}
-        {a > 0 && <div className="mchip mono">${a}</div>}
+        {a > 0 && <div className={"mchip mono t-" + chipTier(a)}>${a}</div>}
       </div>
     );
   };
@@ -87,7 +87,7 @@ function Table({ bets, phase, point, working, rules, onPlace, onClear, canPlace,
             C {come}{bets.comeOdds[n] > 0 ? `+${bets.comeOdds[n]}` : ""}
           </button>
         )}
-        {bets.place[n] > 0 && <div className="mchip mono place">${bets.place[n]}</div>}
+        {bets.place[n] > 0 && <div className={"mchip mono place t-" + chipTier(bets.place[n])}>${bets.place[n]}</div>}
       </div>
     );
   };

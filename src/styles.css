@@ -179,9 +179,9 @@ body {
 .rollpip.out .rt { color: #fecaca; }
 
 /* chips — edge stripes + inlay ring like the real thing */
-.chipbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+.chipbar { display: flex; gap: 9px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; padding-top: 4px; }
 .chip {
-  position: relative; width: 48px; height: 48px; border-radius: 50%;
+  position: relative; width: 42px; height: 42px; border-radius: 50%;
   cursor: pointer; font-weight: 800; font-size: 12px;
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   border: none;
@@ -199,7 +199,7 @@ body {
   content: ""; position: absolute; inset: 7px; border-radius: 50%;
   border: 1.5px dashed rgba(0,0,0,.3); pointer-events: none;
 }
-.chip.on { outline: 3px solid var(--gold); outline-offset: 3px; transform: translateY(-3px); }
+.chip.on { outline: 2px solid var(--gold); outline-offset: 1px; transform: translateY(-2px); }
 
 /* buttons */
 .btn {
@@ -522,19 +522,23 @@ a { color: #22d3ee; }
 .zone.lock { cursor: default; }
 .zone.lock:hover { background: transparent; border-color: rgba(216, 240, 228, .5); }
 
-/* the bet riding a region */
+/* the bet riding a region — a casino chip coloured by its amount */
 .mchip {
   position: absolute; right: -0.6cqw; bottom: -1cqw; z-index: 4;
-  min-width: 5.4cqw; height: 4.6cqw; padding: 0 1.2cqw;
+  min-width: 5.6cqw; height: 5cqw; padding: 0 1.2cqw;
   border-radius: 999px;
-  background: radial-gradient(circle at 50% 32%, #1d2230, #0b0e15 72%);
-  border: 0.4cqw dashed var(--gold); color: #fde68a;
   display: flex; align-items: center; justify-content: center;
   font-size: 2.3cqw; font-weight: 800;
-  box-shadow: 0 0.5cqw 1.4cqw rgba(0,0,0,.6);
+  box-shadow: 0 0.5cqw 1.4cqw rgba(0,0,0,.6), inset 0 0.4cqw 0.6cqw rgba(255,255,255,.25), inset 0 -0.4cqw 0.7cqw rgba(0,0,0,.3);
   animation: chipdrop .16s ease-out;
   pointer-events: none;
+  border: 0.4cqw dashed rgba(255,255,255,.6);   /* edge spots, tinted per chip below */
 }
+/* tray-matched colours: white $1 · red $5 · green $25 · black $100 */
+.mchip.t-white { background: radial-gradient(circle at 50% 32%, #f4f4f6, #d4d6dd 74%); color: #0a0b0f; border-color: rgba(0,0,0,.32); }
+.mchip.t-red   { background: radial-gradient(circle at 50% 32%, #ff5a6e, #d51d33 74%); color: #fff; border-color: rgba(255,255,255,.75); }
+.mchip.t-green { background: radial-gradient(circle at 50% 32%, #3ddc84, #159c4f 74%); color: #06251a; border-color: rgba(255,255,255,.72); }
+.mchip.t-black { background: radial-gradient(circle at 50% 32%, #2b3346, #0d1119 74%); color: #f1f5f9; border-color: rgba(255,255,255,.55); }
 .numbox .mchip.place { right: auto; left: 50%; transform: translateX(-50%); bottom: -1.1cqw; }
 
 /* number / point boxes across the top */

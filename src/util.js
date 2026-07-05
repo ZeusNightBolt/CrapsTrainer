@@ -10,6 +10,16 @@ export function edgeColor(e) {
 export const usd = (n) =>
   "$" + (Math.round(n * 100) / 100).toLocaleString(undefined, { maximumFractionDigits: 2 });
 
+// Casino chip colour by amount — the on-felt bet markers are tinted like the
+// tray they came from: white $1s, red $5s, green $25s, black $100s. A total
+// takes the colour of its highest fitting denomination (e.g. $50 → green).
+export function chipTier(amount) {
+  if (amount >= 100) return "black";
+  if (amount >= 25) return "green";
+  if (amount >= 5) return "red";
+  return "white";
+}
+
 // Table-odds variants. "345" (3-4-5x) is the modern strip standard; the flat
 // multiples (1x/2x/5x/10x/20x/100x) apply uniformly to every point number.
 export const ODDS_MODES = [
