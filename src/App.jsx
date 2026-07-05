@@ -11,7 +11,7 @@ import Table from "./components/Table.jsx";
 import BetsReference from "./components/BetsReference.jsx";
 import Strategy from "./components/Strategy.jsx";
 import Simulator from "./components/Simulator.jsx";
-import CoachBar from "./components/CoachBar.jsx";
+import CoachGenie from "./components/CoachGenie.jsx";
 import NextRoll from "./components/NextRoll.jsx";
 import MobileBar from "./components/MobileBar.jsx";
 import RulesPanel from "./components/RulesPanel.jsx";
@@ -71,8 +71,7 @@ export default function App() {
   const [showRules, setShowRules] = useState(false);
   const [lastRolls, setLastRolls] = useState([]);
   const [flash, setFlash] = useState(null); // { key, amt } → floating ±$ after a roll
-  const [coachOn, setCoachOn] = useState(true);
-  const [stance, setStance] = useState("bal");
+  const [coachOpen, setCoachOpen] = useState(false);
   const [undoStack, setUndoStack] = useState([]); // pre-mutation snapshots, cleared on each roll
   const pendingUndo = useRef(null);
   const iv = useRef(null);
@@ -81,7 +80,7 @@ export default function App() {
   const table = useMemo(() => ({ sum: totalWagered(b), drag: drag(b, rules) }), [b, rules]);
   const pnl = round2(game.bankroll - stats.start);
   const outcomes = useMemo(() => nextRollOutcomes(game, rules), [game, rules]);
-  const { advice, exposure } = useMemo(() => getAdvice(game, rules, chip, stance), [game, rules, chip, stance]);
+  const { insights, exposure } = useMemo(() => getAdvice(game, rules), [game, rules]);
 
   // Table max for line odds: pass odds cap = flat × multiple; don't-side lay
   // odds cap is expressed as lay-to-WIN the same multiple.
@@ -168,18 +167,6 @@ export default function App() {
       return bank;
     });
   }
-  // Add a coach-specified odds amount (already sized to stance/budget/table cap).
-  function applyOdds(kind, n, amt) {
-    mutate((bets, bank) => {
-      const a = Math.min(amt, bank);
-      if (a <= 0) return bank;
-      if (kind === "pass") bets.passodds += a;
-      else if (kind === "dont") bets.dpodds += a;
-      else if (kind === "come") bets.comeOdds[n] += a;
-      else return bank;
-      return bank - a;
-    });
-  }
   const onComeOdds = useCallback((side, n) => {
     mutate((bets, bank) => {
       const mult = maxOddsMultiple(n, rules.oddsMode);
@@ -189,24 +176,6 @@ export default function App() {
     });
   }, [chip, rules.oddsMode]);
 
-  function clearProps() {
-    mutate((bets, bank) => {
-      let back = 0;
-      for (const k of ["field", "any7", "anycraps", "yo", "aces", "boxcars", "aceDeuce", "horn", "ce", "world"]) { back += bets[k]; bets[k] = 0; }
-      for (const n of [4, 6, 8, 10]) { back += bets.hard[n]; bets.hard[n] = 0; }
-      return bank + back;
-    });
-  }
-  const runCoachAction = useCallback((a) => {
-    if (rolling || !a) return;
-    if (a.type === "bet") onPlace(a.path);
-    else if (a.type === "passOdds") applyOdds("pass", null, a.amt);
-    else if (a.type === "dontOdds") applyOdds("dont", null, a.amt);
-    else if (a.type === "comeOdds") applyOdds("come", a.n, a.amt);
-    else if (a.type === "clearProps") clearProps();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rolling, onPlace]);
-
   function toggleWorking() { setGame((g) => ({ ...g, working: !g.working })); }
 
   const roll = useCallback(() => {
@@ -215,10 +184,10 @@ export default function App() {
     setRolling(true);
     setUndoStack([]); // dice in the air — betting decisions are final
     let n = 0;
-    // ~3s of tumble before the result lands: 33 shake frames at 90ms
+    // ~1.5s of tumble before the result lands: 17 shake frames at 90ms
     iv.current = setInterval(() => {
       setDice([1 + rnd6(), 1 + rnd6()]);
-      if (++n > 32) {
+      if (++n > 16) {
         clearInterval(iv.current);
         const d1 = 1 + rnd6(), d2 = 1 + rnd6();
         setDice([d1, d2]);
@@ -325,9 +294,6 @@ export default function App() {
             {game.phase === "point" && b.dontpass > 0 && <button className="btn ghost" onClick={() => addMaxOdds("dont")}>+ Max Lay Odds</button>}
             <div className="grow" />
             <button className="btn primary roll-desktop" style={{ minWidth: 160 }} onClick={roll} disabled={rolling}>{rolling ? "ROLLING…" : "ROLL DICE"}</button>
-
-            <CoachBar advice={advice} exposure={exposure} stance={stance} onStance={setStance}
-              on={coachOn} onToggle={setCoachOn} onAction={runCoachAction} rolling={rolling} />
           </div>
 
           {lastRolls.length > 0 && (
@@ -356,6 +322,8 @@ export default function App() {
 
           <MobileBar phase={game.phase} point={game.point} dice={dice} rolling={rolling}
             sum={table.sum} bankroll={game.bankroll} start={stats.start} onRoll={roll} />
+
+          <CoachGenie insights={insights} exposure={exposure} open={coachOpen} onToggle={setCoachOpen} />
         </>
       )}
 
