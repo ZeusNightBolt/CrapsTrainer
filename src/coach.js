@@ -101,3 +101,72 @@ export function getAdvice(game, rules) {
 
   return { insights: insights.length ? insights : [headline], headline, exposure };
 }
+
+// ---------------------------------------------------------------------------
+// Post-roll recap — the interactive, teaching half of the coach. Given the
+// full context of the roll that just happened, it narrates what the dice did
+// to your bets and drops a playful, genuinely educational nugget: why the 7
+// ended the hand, what a natural is, which bets that number pays, etc.
+// ---------------------------------------------------------------------------
+
+const WAYS = { 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 7: 6, 8: 5, 9: 4, 10: 3, 11: 2, 12: 1 };
+const ODDNAMES = { 2: "snake eyes", 3: "ace-deuce", 11: "yo (eleven)", 12: "boxcars" };
+
+// Which standard bets a given total pays, for the "this number pays…" teacher.
+function paysOn(t, isHard, phase) {
+  const p = [];
+  if (phase === "comeout" && (t === 7 || t === 11)) p.push("Pass Line");
+  if (phase === "comeout" && (t === 2 || t === 3 || t === 12)) p.push("Don't Pass");
+  if ([2, 3, 4, 9, 10, 11, 12].includes(t)) p.push("Field");
+  if (t === 7) p.push("Any Seven");
+  if ([2, 3, 12].includes(t)) p.push("Any Craps");
+  if (t === 11) p.push("Yo");
+  if (t === 2) p.push("Aces");
+  if (t === 12) p.push("Boxcars");
+  if (t === 3) p.push("Ace-Deuce");
+  if (isHard && [4, 6, 8, 10].includes(t)) p.push(`Hard ${t}`);
+  if ([4, 5, 6, 8, 9, 10].includes(t)) p.push(`Place/Come ${t}`);
+  return p;
+}
+
+export function getRollRecap(lastRoll, rules) {
+  if (!lastRoll) return null;
+  const { d1, d2, total: t, delta, events, prevPhase, prevPoint, sevenOut, madePoint } = lastRoll;
+  const isHard = d1 === d2;
+  const ways = WAYS[t];
+  const waysTxt = `the ${t} comes up <b>${ways} way${ways > 1 ? "s" : ""} in 36</b>`;
+
+  // condense the engine events into coloured result lines
+  const outcomes = events
+    .filter((e) => e.type === "win" || e.type === "lose" || e.type === "push")
+    .map((e) => ({ level: e.type === "win" ? "win" : e.type === "push" ? "push" : "lose", msg: e.m }));
+
+  // the playful teaching nugget, most specific first
+  let teach;
+  if (sevenOut) {
+    teach = `💀 <b>Seven-out.</b> The 7 is the most common roll — ${waysTxt} — so it ends the hand and sweeps the board. Only your free <b>Odds</b> are handed back untouched. That's the whole case for line + odds: the 7 can't overpay against it.`;
+  } else if (madePoint) {
+    teach = `🎯 <b>Point made!</b> You rolled the ${t} before a 7 — Pass Line and Odds pay true. Same shooter rolls a fresh come-out, so ride the heater and bet the line again.`;
+  } else if (prevPhase === "comeout" && (t === 7 || t === 11)) {
+    teach = `✨ <b>Natural ${t}!</b> On the come-out, 7 and 11 win the Pass Line outright — no point needed. (${waysTxt.charAt(0).toUpperCase() + waysTxt.slice(1)}.)`;
+  } else if (prevPhase === "comeout" && [2, 3, 12].includes(t)) {
+    teach = `🎲 <b>Craps — ${t}${ODDNAMES[t] ? ` (${ODDNAMES[t]})` : ""}.</b> On the come-out this loses the Pass Line (the 12 pushes the Don't). No point set — the shooter goes again.`;
+  } else if (prevPhase === "comeout" && NUMBERS.includes(t)) {
+    teach = `📍 <b>Point is ${t}.</b> The puck flips ON. Now a 7 ends everything, so this is the moment to back your line with <b>Odds</b> — 0% edge, the only bet the house can't tax.`;
+  } else if (prevPhase === "point" && [2, 3, 11, 12].includes(t)) {
+    teach = `🎯 A <b>${t}</b> is one-roll territory — it only touches the Field and center props. Your point (${prevPoint}) is untouched; keep rolling for it.`;
+  } else if (prevPhase === "point" && NUMBERS.includes(t)) {
+    const hit = outcomes.some((o) => o.level === "win");
+    teach = hit
+      ? `✓ The <b>${t}</b> paid your working numbers${isHard ? " (and it came the hard way!)" : ""}. The shooter keeps rolling toward the point (${prevPoint}).`
+      : `The <b>${t}</b> is a live number, but you had nothing on it. The point (${prevPoint}) still stands — a Come bet would put the next number to work for you.`;
+  } else {
+    teach = `${waysTxt.charAt(0).toUpperCase() + waysTxt.slice(1)}.`;
+  }
+
+  const pays = paysOn(t, isHard, prevPhase);
+  const level = delta > 0 ? "win" : delta < 0 ? "lose" : "push";
+  const title = `🎲 ${d1} + ${d2} = ${t}${isHard ? " · hard" : ""}`;
+
+  return { id: lastRoll.id, title, level, delta, outcomes, teach, pays };
+}
