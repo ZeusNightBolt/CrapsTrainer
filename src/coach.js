@@ -32,6 +32,7 @@ export function getAdvice(game, rules) {
   const comeRiding = NUMBERS.filter((n) => b.comePts[n] > 0);
   const comeNoOdds = comeRiding.filter((n) => b.comeOdds[n] < b.comePts[n] * maxOddsMultiple(n, rules.oddsMode));
   const numbersWorking = (b.passline > 0 ? 1 : 0) + comeRiding.length + (b.come > 0 ? 1 : 0);
+  const placeNums = NUMBERS.filter((n) => b.place[n] > 0 || b.buy[n] > 0);
 
   if (game.phase === "comeout") {
     if (b.passline === 0 && b.dontpass === 0 && comeRiding.length === 0) {
@@ -57,9 +58,25 @@ export function getAdvice(game, rules) {
       insights.push(ok(`Three numbers working with odds — that's as good as craps gets. The correct move now is <b>nothing</b>: just roll.`));
     } else if (b.dontpass > 0 || NUMBERS.some((n) => b.dcPts[n] > 0)) {
       insights.push(ok(`Don't side is set — you're the favourite from here. A <b>Don't Come</b> spreads the same math to a second number, or simply roll.`));
+    } else if (placeNums.length > 0) {
+      insights.push(ok(`Your Place number${placeNums.length > 1 ? "s are" : " is"} working (${placeNums.join(", ")}). They pay when their number hits — but note that only a <b>Come bet</b> also wins on the 7 that clears them. See the hedge idea below.`));
     } else {
       insights.push(doIt(`Point is on and nothing's working. No need to wait for a new come-out — the <b>Come box</b> is the same Pass-Line play, live right now.`));
     }
+  }
+
+  // ---- combos & hedges: read the shape of the whole board ----
+  const workingNums = new Set(placeNums.concat(comeRiding));
+  if (game.phase === "point" && b.passline > 0) workingNums.add(pt);
+  const coverage = workingNums.size;
+  const ironCross = b.place[5] > 0 && b.place[6] > 0 && b.place[8] > 0 && b.field > 0;
+
+  if (ironCross) {
+    insights.push(doIt(`🧩 <b>Iron Cross</b> spotted — Place 5/6/8 + Field. You now collect on <b>every roll except the 7</b>, which feels unbeatable. The catch: the 7 is the likeliest roll (6 ways in 36) and it sweeps <b>all $${sevenLoss}</b> at once — blended cost ~2.3%. If you're running it, a <b>Come bet</b> is the honest counter: it's the one wager that <i>pays you</i> on that exact 7.`));
+  } else if (game.phase === "point" && coverage >= 3 && b.come === 0 && sevenLoss > 0) {
+    insights.push(doIt(`🛡 <b>Hedge idea:</b> you've got <b>${coverage} numbers</b> working — one 7 wipes out all <b>$${sevenLoss}</b> at once, and the 7 is the single most likely roll. The one add that <i>wins</i> on that seven-out is a <b>Come bet</b>. It won't beat the house edge, but it turns your worst roll into a partial score — a genuine variance hedge, not a system.`));
+  } else if (game.phase === "point" && coverage >= 2 && b.field > 0 && !ironCross) {
+    insights.push(ok(`🧩 <b>Combo read:</b> the Field pays 2·3·4·9·10·11·12 and your numbers cover the middle — together you collect on nearly everything but the 7. On its own the Field is a leak (${rules.fieldTriple ? "2.78%" : "5.56%"}), but inside this spread it's plugging the outside-number gaps. Just know what it all shares: the 7 takes the whole board.`));
   }
 
   // ---- read the leaks currently on the table ----
@@ -84,8 +101,10 @@ export function getAdvice(game, rules) {
     insights.push(bad(`You're on <b>both</b> the Pass and Don't Pass (the "doey-don't"). They mostly cancel, so you're paying two house edges for almost no action — the only thing that resolves is the rare 12 push.`));
   }
 
-  // ---- quiet praise for the good number bets ----
-  if (b.place[6] > 0 || b.place[8] > 0) {
+  // ---- quiet praise for the good shapes ----
+  if (b.passline > 0 && b.passodds > 0 && comeRiding.length >= 2 && comeRiding.every((n) => b.comeOdds[n] > 0)) {
+    insights.push(ok(`⭐ Textbook <b>3-Point Molly</b> — line + two come numbers, all backed with odds. This is the lowest-edge way to keep three numbers working. Nothing to add; ride it.`));
+  } else if (b.place[6] > 0 || b.place[8] > 0) {
     insights.push(ok(`<b>Place 6 & 8</b> (1.52%) are the best number bets outside the line — bet them in $6 units so the 7:6 payout lands clean.`));
   }
 
