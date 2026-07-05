@@ -47,13 +47,16 @@ combinations of the current state — so you can see exactly what every number d
 with cell brightness tracking probability.
 
 ### 🎲 The mat — a real craps layout
-The betting surface is drawn as one full side of a real craps table — point boxes (4 5 SIX 8 NINE 10) with
-the ON puck riding the point, DON'T COME box, COME band, FIELD with the circled 2/12, DON'T PASS BAR,
-PASS LINE with a free-odds zone behind it, and the complete center props column — sized to fit an iPhone
-Pro Max screen with no scrolling. **Tap a region to bet the selected chip, double-tap to take the bet
-down, undo any betting action** (rolls are final), and tap a riding Come/Don't-Come chip to back it with
-odds. Every real bet is playable, dice tumble for ~3 seconds before the result lands, and the roll log
-narrates every resolution in plain English with exact amounts.
+The betting surface is drawn as one full side of a real craps table on its true wide proportions — point
+boxes (4 5 SIX 8 NINE 10) with the ON puck riding the point, DON'T COME box, red COME/PASS LINE and
+DON'T PASS bands, FIELD with the circled 2/12, free-odds and lay-odds zones, and the complete center
+proposition block (hardways, one-roll numbers, ANY SEVEN, ANY CRAPS, C&E, HORN, WORLD). The whole felt is
+aspect-ratio-locked and scaled with CSS container-query units, so it **zooms to fit any screen** — the
+entire table is visible at once on an iPhone Pro Max with no scrolling, and it grows on desktop. **Tap a
+region to bet the selected chip, double-tap to take the bet down, undo any betting action** (rolls are
+final), and tap a riding Come/Don't-Come chip to back it with odds. Every real bet is playable, the dice
+tumble for ~3 seconds before the result lands, and the roll log narrates every resolution in plain English
+with exact amounts.
 
 ### ⚙️ Table rules — real casino variants
 Three variants you will actually encounter, live-wired into every number on every tab:

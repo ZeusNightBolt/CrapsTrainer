@@ -3,20 +3,24 @@ import { NUMBERS } from "../engine.js";
 import { edgeColor, maxOddsMultiple } from "../util.js";
 import { PLACE_EDGE, buyEdge, layEdge, fieldEdge } from "../bets.js";
 
-// The betting mat — one full side of a real craps layout, drawn as tappable
-// felt regions instead of a list of tiles:
+// The betting mat — one full side of a real craps table, drawn as tappable
+// felt regions laid out on the true horizontal proportions of a live table:
 //
-//   ┌────┬────────────────────────────┬─────────┐
-//   │ DC │  4  5  SIX  8  NINE  10    │         │
-//   ├────┴────────────────────────────┤ center  │
-//   │              COME               │  props  │
-//   ├─────────────────────────────────┤ (hard-  │
-//   │   FIELD  2 3 4 9 10 11 12       │  ways,  │
-//   ├──────────────────────┬──────────┤  horn,  │
-//   │  DON'T PASS BAR 12   │ lay odds │  etc.)  │
-//   ├──────────────────────┼──────────┤         │
-//   │      PASS LINE       │ odds     │         │
-//   └──────────────────────┴──────────┴─────────┘
+//   ┌────┬──────────────────────────────────┬───────────────┐
+//   │ D  │  4   5   SIX   8   NINE   10      │   hardways    │
+//   │ C  ├──────────────────────────────────┤  4  6  8  10  │
+//   │    │            C O M E                │  ───────────  │
+//   │    ├──────────────────────────────────┤  2 3 11 12    │
+//   │    │  FIELD  2 3 4 9 10 11 12          │  ANY SEVEN    │
+//   │    ├───────────────────────┬──────────┤  C&E · CRAPS  │
+//   │    │  DON'T PASS BAR 12    │ lay odds │  HORN · WORLD │
+//   ├────┴───────────────────────┼──────────┼───────────────┤
+//   │     P A S S   L I N E      │  odds    │               │
+//   └────────────────────────────┴──────────┴───────────────┘
+//
+// The whole surface is aspect-ratio-locked and scaled with container-query
+// units, so it always fits the screen — wide and readable on an iPhone Pro
+// Max, larger on desktop, never a scroll to reach a bet.
 //
 // Interactions: tap a region to add the selected chip · double-tap to take
 // the whole bet down (house rules still apply — a pass line bet can't come
@@ -108,7 +112,7 @@ function Table({ bets, phase, point, working, rules, onPlace, onClear, canPlace,
 
         <Zone path="come" cls="comeband" area="come" title="Come — 1.41% edge, travels to the number rolled">
           <span className="bigband">COME</span>
-          <span className="bandsub">7/11 wins · 2/3/12 loses · numbers travel</span>
+          <span className="bandsub">7 · 11 wins &nbsp;·&nbsp; 2 · 3 · 12 loses &nbsp;·&nbsp; numbers travel</span>
         </Zone>
 
         <Zone path="field" cls="fieldband" area="field"
@@ -117,49 +121,49 @@ function Table({ bets, phase, point, working, rules, onPlace, onClear, canPlace,
           <span className="fnums mono">
             <b className="circ">2</b> 3 4 9 10 11 <b className="circ">12</b>
           </span>
-          <span className="bandsub">2 pays double · 12 pays {rules.fieldTriple ? "triple" : "double"}</span>
         </Zone>
 
         <Zone path="dontpass" cls="dpband" area="dp" title="Don't Pass — 1.36% edge, bar 12">
-          <span className="fl">DON'T PASS BAR</span><span className="bar12 mono">12</span>
+          <span className="fl">DON'T PASS</span><span className="bar12 mono">BAR 12</span>
         </Zone>
         <Zone path="dpodds" cls="oddszone" area="dpo" title="Lay odds behind Don't Pass — 0% edge">
-          <span className="pl">{oddsOk && bets.dontpass > 0 ? "LAY ODDS 0%" : "lay odds"}</span>
+          <span className="pl">{oddsOk && bets.dontpass > 0 ? "LAY 0%" : "lay odds"}</span>
         </Zone>
 
         <Zone path="passline" cls="passband" area="pass" title="Pass Line — 1.41% edge">
-          <span className="bigband">PASS LINE</span>
+          <span className="bigband">PASS&nbsp;&nbsp;LINE</span>
         </Zone>
         <Zone path="passodds" cls="oddszone" area="po"
           title={`Odds behind the line — 0% edge, max ${maxOddsMultiple(point || 6, rules.oddsMode)}x here`}>
-          <span className="pl">{oddsOk && bets.passline > 0 ? "ODDS 0% FREE" : "odds"}</span>
+          <span className="pl">{oddsOk && bets.passline > 0 ? "ODDS 0%" : "odds"}</span>
         </Zone>
 
+        {/* center proposition block — the shared middle of a real table */}
         <div className="propscol" style={{ gridArea: "props" }}>
-          <div className="propshead">— CENTER —</div>
-          <div className="proppair">
-            <Prop path="hard:6" label="HARD 6" pays="9:1" edge={9.09} />
-            <Prop path="hard:8" label="HARD 8" pays="9:1" edge={9.09} />
+          <div className="propblock">
+            <div className="blocklbl">HARDWAYS</div>
+            <div className="proprow hard">
+              <Prop path="hard:4" label="4" pays="7:1" edge={11.11} cls="hardcell" />
+              <Prop path="hard:6" label="6" pays="9:1" edge={9.09} cls="hardcell" />
+              <Prop path="hard:8" label="8" pays="9:1" edge={9.09} cls="hardcell" />
+              <Prop path="hard:10" label="10" pays="7:1" edge={11.11} cls="hardcell" />
+            </div>
           </div>
-          <div className="proppair">
-            <Prop path="hard:4" label="HARD 4" pays="7:1" edge={11.11} />
-            <Prop path="hard:10" label="HARD 10" pays="7:1" edge={11.11} />
+          <div className="proprow">
+            <Prop path="aces" label="2" pays="30:1" edge={13.89} cls="hardcell" />
+            <Prop path="aceDeuce" label="3" pays="15:1" edge={11.11} cls="hardcell" />
+            <Prop path="yo" label="YO" pays="15:1" edge={11.11} cls="hardcell" />
+            <Prop path="boxcars" label="12" pays="30:1" edge={13.89} cls="hardcell" />
           </div>
           <Prop path="any7" label="ANY SEVEN" pays="4:1" edge={16.67} cls="wide worst" />
-          <div className="proppair">
-            <Prop path="aces" label="ACES" pays="30:1" edge={13.89} />
-            <Prop path="boxcars" label="12" pays="30:1" edge={13.89} />
+          <div className="proprow">
+            <Prop path="anycraps" label="ANY CRAPS" pays="7:1" edge={11.11} />
+            <Prop path="ce" label="C & E" pays="crps/11" edge={11.11} />
           </div>
-          <div className="proppair">
-            <Prop path="aceDeuce" label="ACE·2" pays="15:1" edge={11.11} />
-            <Prop path="yo" label="YO 11" pays="15:1" edge={11.11} />
+          <div className="proprow">
+            <Prop path="horn" label="HORN" pays="4-way" edge={12.5} />
+            <Prop path="world" label="WORLD" pays="5-way" edge={13.33} />
           </div>
-          <Prop path="anycraps" label="ANY CRAPS" pays="7:1" edge={11.11} cls="wide" />
-          <div className="proppair">
-            <Prop path="horn" label="HORN" pays="÷4" edge={12.5} />
-            <Prop path="ce" label="C & E" pays="÷2" edge={11.11} />
-          </div>
-          <Prop path="world" label="WORLD" pays="÷5" edge={13.33} cls="wide" />
         </div>
       </div>
 
