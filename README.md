@@ -22,24 +22,24 @@ Monte-Carlo verified against published house-edge figures before any build ships
 
 ## Features
 
-### 🎓 Coach — guided play with a risk budget
-A live next-best-move widget (top strip on desktop, floating thumb-reach card on mobile) that reads the
-table after every roll and prescribes the next move — balancing EV against **exposure** and **longevity**,
-not just pushing maximum deployment. Three selectable stances (🛡 Cautious / ⚖ Balanced / 🔥 Aggressive)
-set the risk caps; the math is identical in all three:
+### 🧞 Coach genie — advisory, not autopilot
+A floating chat-help bubble in the bottom-right corner. Tap the genie and it reads whatever is on the felt
+and **explains the logic** — never a dollar amount, never a bet placed for you:
 
-1. **Come-out** → bet the Pass Line (1.41%) or Don't Pass (1.36%) — the only good flat bets.
-2. **Point set** → take odds (0% edge), **sized to your stance's next-7 budget** — the full table max when
-   it fits, a smaller amount when one roll would cost too much of your stack.
-3. **Spread with Come bets** — and when the board is heavy, the coach frames the Come honestly as the one
-   real cushion: a fresh Come bet in the box *wins* on a seven-out while everything else dies.
-4. **Stance ceiling reached** → stop. Two numbers cautious, three balanced/aggressive (the 3-Point Molly).
+- **What each bet on the table is doing**, in plain English (Pass Line: "7 or 11 wins now, 2·3·12 loses;
+  when a point sets, back it with Odds — the only 0%-edge bet").
+- **Leak detection with the reasoning** — the Field "looks like seven numbers, but 5·6·7·8 all lose"; Any
+  Seven is "the single worst bet, 16.67%"; center props "run 11–17% and decide every roll"; the doey-don't
+  "pays two house edges to mostly cancel."
+- **The smart next move** — take odds, spread with a Come bet (the 3-Point Molly), or just roll.
 
-Every recommendation shows a live **exposure line** — what the next 7 actually does to your stack (computed
-by the real engine, not an estimate) against your stance cap, plus the probability-weighted EV of the next
-roll. **Longevity checks** flag unit sizes that commit too much per hand ("a $100 unit with odds commits
-~$500/hand — half your stack on one decision"), and **leak detection** flags chips riding the center/field
-with a working "take it down" action.
+A badge on the lamp signals when there's something worth reading (gold pulse = a smart move available,
+red dot = a leak on the table), and a footer states your board exposure to the next 7 as a plain fact.
+
+### 🎯 Next-roll panel
+A per-total P&L readout (2 through 12) computed by running the actual resolution engine on all 36 die
+combinations of the current state — so you can see exactly what every number does to you before you roll,
+with cell brightness tracking probability.
 
 ### 🎯 Next-roll panel
 A per-total P&L readout (2 through 12) computed by running the actual resolution engine on all 36 die
@@ -54,9 +54,9 @@ proposition block (hardways, one-roll numbers, ANY SEVEN, ANY CRAPS, C&E, HORN, 
 aspect-ratio-locked and scaled with CSS container-query units, so it **zooms to fit any screen** — the
 entire table is visible at once on an iPhone Pro Max with no scrolling, and it grows on desktop. **Tap a
 region to bet the selected chip, double-tap to take the bet down, undo any betting action** (rolls are
-final), and tap a riding Come/Don't-Come chip to back it with odds. Every real bet is playable, the dice
-tumble for ~3 seconds before the result lands, and the roll log narrates every resolution in plain English
-with exact amounts.
+final), and tap a riding Come/Don't-Come chip to back it with odds. Every real bet is playable, red casino
+dice tumble for ~1.5 seconds before the result lands, and the roll log narrates every resolution in plain
+English with exact amounts.
 
 ### ⚙️ Table rules — real casino variants
 Three variants you will actually encounter, live-wired into every number on every tab:
