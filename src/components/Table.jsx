@@ -1,158 +1,192 @@
-import { useState, memo } from "react";
+import { useState, useRef, memo } from "react";
 import { NUMBERS } from "../engine.js";
 import { edgeColor, maxOddsMultiple } from "../util.js";
 import { PLACE_EDGE, buyEdge, layEdge, fieldEdge } from "../bets.js";
 
-const oddsLabel = (n) => ([4, 10].includes(n) ? "2:1" : [5, 9].includes(n) ? "3:2" : "6:5");
-const layLabel = (n) => ([4, 10].includes(n) ? "1:2" : [5, 9].includes(n) ? "2:3" : "5:6");
+// The betting mat — one full side of a real craps layout, drawn as tappable
+// felt regions instead of a list of tiles:
+//
+//   ┌────┬────────────────────────────┬─────────┐
+//   │ DC │  4  5  SIX  8  NINE  10    │         │
+//   ├────┴────────────────────────────┤ center  │
+//   │              COME               │  props  │
+//   ├─────────────────────────────────┤ (hard-  │
+//   │   FIELD  2 3 4 9 10 11 12       │  ways,  │
+//   ├──────────────────────┬──────────┤  horn,  │
+//   │  DON'T PASS BAR 12   │ lay odds │  etc.)  │
+//   ├──────────────────────┼──────────┤         │
+//   │      PASS LINE       │ odds     │         │
+//   └──────────────────────┴──────────┴─────────┘
+//
+// Interactions: tap a region to add the selected chip · double-tap to take
+// the whole bet down (house rules still apply — a pass line bet can't come
+// down after the point is set) · tap a riding come/DC chip to put odds
+// behind it. Memoized: only re-renders on real bet/phase/rules changes.
+const spell = { 4: "4", 5: "5", 6: "SIX", 8: "8", 9: "NINE", 10: "10" };
 
-// Memoized: the felt is the heaviest subtree, and its props only change on
-// actual bet/phase/rules changes — not on dice animation, log, or stats churn.
 function Table({ bets, phase, point, working, rules, onPlace, onClear, canPlace, onComeOdds }) {
   const [showBuyLay, setShowBuyLay] = useState(false);
+  const lastTap = useRef({ path: null, t: 0 });
   const BUY_EDGE = buyEdge(rules.vigAlways);
   const LAY_EDGE = layEdge(rules.vigAlways);
 
-  const amt = (path) => {
+  const val = (path) => {
     if (path.includes(":")) { const [g, n] = path.split(":"); return bets[g][n]; }
     return bets[path];
   };
-  const tap = (path) => onPlace(path); // add/remove handled upstream via mode
-  const hold = (e, path) => { e.preventDefault(); onClear(path); };
 
-  const Tile = ({ path, label, edge, sub, ok = true }) => {
-    const a = amt(path);
-    const enabled = ok && (canPlace ? canPlace(path) : true);
-    // A disabled tile that still has chips riding (e.g. Pass Line once the
-    // point is set) stays fully visible — your money shouldn't look inactive —
-    // it just stops accepting taps (.lock instead of .dis).
+  // tap = add the selected chip · double-tap (<320ms) = take the bet down
+  const tap = (path) => {
+    const now = Date.now();
+    if (lastTap.current.path === path && now - lastTap.current.t < 320) {
+      lastTap.current = { path: null, t: 0 };
+      onClear(path);
+      return;
+    }
+    lastTap.current = { path, t: now };
+    if (canPlace ? canPlace(path) : true) onPlace(path);
+  };
+
+  const Zone = ({ path, cls = "", area, children, title }) => {
+    const a = path ? val(path) : 0;
+    const enabled = !path || (canPlace ? canPlace(path) : true);
     return (
-      <div className={"tile" + (enabled ? "" : a > 0 ? " lock" : " dis")} onClick={() => enabled && tap(path)}
-        onContextMenu={(e) => hold(e, path)}
-        style={{ borderColor: a ? edgeColor(edge) : "var(--line-2)" }}>
-        <div>
-          <div className="tn">{label}</div>
-          <div className="te mono" style={{ color: edgeColor(edge) }}>
-            {edge === 0 ? "0% edge" : edge.toFixed(2) + "%"}{sub ? " · " + sub : ""}
-          </div>
-        </div>
-        {a > 0 && <div className="amt mono" style={{ color: edgeColor(edge) }}>${a}</div>}
+      <div className={"zone " + cls + (enabled ? "" : a > 0 ? " lock" : " dis")}
+        style={area ? { gridArea: area } : undefined} title={title}
+        onClick={path ? () => tap(path) : undefined}
+        onContextMenu={path ? (e) => { e.preventDefault(); onClear(path); } : undefined}>
+        {children}
+        {a > 0 && <div className="mchip mono">${a}</div>}
       </div>
     );
   };
 
-  const NumTile = ({ n }) => {
-    const a = bets.place[n];
+  const NumBox = ({ n }) => {
     const isPt = point === n;
-    const e = PLACE_EDGE[n];
     const come = bets.comePts[n], dc = bets.dcPts[n];
     return (
-      <div className="tile num" onClick={() => onPlace("place:" + n)} onContextMenu={(e2) => hold(e2, "place:" + n)}
-        style={{ borderColor: isPt ? "#34d399" : a ? edgeColor(e) : "var(--line-2)" }}>
-        {isPt && <div className="pt">PT</div>}
-        <div className="big mono">{n}</div>
-        <div className="te mono" style={{ color: edgeColor(e) }}>{e}%</div>
-        {a > 0 && <div className="amt mono" style={{ color: edgeColor(e) }}>${a}</div>}
-        {come > 0 && (
-          <button className="cbadge come mono" title={`Come bet on ${n} — tap to add odds`}
-            onClick={(ev) => { ev.stopPropagation(); onComeOdds("come", n); }}>
-            C ${come}{bets.comeOdds[n] > 0 ? `+${bets.comeOdds[n]}` : ""}
-          </button>
-        )}
+      <div className={"zone numbox" + (isPt ? " pt-on" : "")} style={{ gridArea: "n" + n }}
+        title={`Place the ${n} — ${PLACE_EDGE[n]}% edge`}
+        onClick={() => tap("place:" + n)}
+        onContextMenu={(e) => { e.preventDefault(); onClear("place:" + n); }}>
+        {isPt && <div className="puckdot" title={`The point is ${n}`}>ON</div>}
+        <div className="numeral">{spell[n]}</div>
         {dc > 0 && (
-          <button className="cbadge dc mono" title={`Don't Come on ${n} — tap to add lay odds`}
-            onClick={(ev) => { ev.stopPropagation(); onComeOdds("dc", n); }}>
-            DC ${dc}{bets.dcOdds[n] > 0 ? `+${bets.dcOdds[n]}` : ""}
+          <button className="ridechip dc mono" title={`Don't Come $${dc} on ${n} — tap for lay odds`}
+            onClick={(e) => { e.stopPropagation(); onComeOdds("dc", n); }}>
+            DC {dc}{bets.dcOdds[n] > 0 ? `+${bets.dcOdds[n]}` : ""}
           </button>
         )}
+        {come > 0 && (
+          <button className="ridechip come mono" title={`Come $${come} on ${n} — tap to add odds`}
+            onClick={(e) => { e.stopPropagation(); onComeOdds("come", n); }}>
+            C {come}{bets.comeOdds[n] > 0 ? `+${bets.comeOdds[n]}` : ""}
+          </button>
+        )}
+        {bets.place[n] > 0 && <div className="mchip mono place">${bets.place[n]}</div>}
       </div>
     );
   };
 
-  const travel = [];
-  for (const n of NUMBERS) {
-    if (bets.comePts[n] > 0) travel.push({ side: "come", n, flat: bets.comePts[n], odds: bets.comeOdds[n] });
-    if (bets.dcPts[n] > 0) travel.push({ side: "dc", n, flat: bets.dcPts[n], odds: bets.dcOdds[n] });
-  }
+  const Prop = ({ path, label, pays, edge, cls = "" }) => (
+    <Zone path={path} cls={"prop " + cls} title={`${label} — pays ${pays}, ${edge}% edge`}>
+      <span className="pl">{label}</span>
+      <span className="pp mono" style={{ color: edgeColor(edge) }}>{pays}</span>
+    </Zone>
+  );
+
+  const oddsOk = phase === "point";
 
   return (
-    <div className="felt">
-      <div className="sec">Line bets — bet with (Pass) or against (Don't) the shooter</div>
-      <div className="tiles g4">
-        <Tile path="passline" label="PASS LINE" edge={1.41} />
-        <Tile path="dontpass" label="DON'T PASS" edge={1.36} />
-        <Tile path="come" label="COME" edge={1.41} />
-        <Tile path="dontcome" label="DON'T COME" edge={1.36} />
-      </div>
+    <div className="feltwrap">
+      <div className="mat">
+        <Zone path="dontcome" cls="dcbox" area="dc" title="Don't Come — 1.36% edge">
+          <span className="vlabel">DON'T COME</span>
+        </Zone>
 
-      <div className="sec">Free odds — 0% edge, requires a line bet · point {point || "not set"} · max {maxOddsMultiple(point || 6, rules.oddsMode)}x</div>
-      <div className="tiles g2">
-        <Tile path="passodds" label="PASS ODDS (free)" edge={0}
-          sub={phase === "point" && bets.passline ? "pays " + oddsLabel(point) : "needs Pass + point"} />
-        <Tile path="dpodds" label="LAY ODDS (free)" edge={0}
-          sub={phase === "point" && bets.dontpass ? "lay " + layLabel(point) : "needs Don't + point"} />
-      </div>
+        {NUMBERS.map((n) => <NumBox key={n} n={n} />)}
 
-      {travel.length > 0 && (
-        <>
-          <div className="sec">Come / Don't Come riding the numbers — a winner is paid and taken down (casino rule)</div>
-          <div className="travel">
-            {travel.map((t, i) => (
-              <div className="trav" key={i}>
-                <b>{t.side === "come" ? "Come" : "Don't"} {t.n}</b>
-                <span className="mono">${t.flat}{t.odds ? ` +$${t.odds} odds` : ""}</span>
-                <button className="odds-btn" onClick={() => onComeOdds(t.side, t.n)}>+ odds</button>
-              </div>
-            ))}
+        <Zone path="come" cls="comeband" area="come" title="Come — 1.41% edge, travels to the number rolled">
+          <span className="bigband">COME</span>
+          <span className="bandsub">7/11 wins · 2/3/12 loses · numbers travel</span>
+        </Zone>
+
+        <Zone path="field" cls="fieldband" area="field"
+          title={`Field — one roll, ${fieldEdge(rules.fieldTriple)}% edge, 12 pays ${rules.fieldTriple ? "3:1" : "2:1"}`}>
+          <span className="fl">FIELD</span>
+          <span className="fnums mono">
+            <b className="circ">2</b> 3 4 9 10 11 <b className="circ">12</b>
+          </span>
+          <span className="bandsub">2 pays double · 12 pays {rules.fieldTriple ? "triple" : "double"}</span>
+        </Zone>
+
+        <Zone path="dontpass" cls="dpband" area="dp" title="Don't Pass — 1.36% edge, bar 12">
+          <span className="fl">DON'T PASS BAR</span><span className="bar12 mono">12</span>
+        </Zone>
+        <Zone path="dpodds" cls="oddszone" area="dpo" title="Lay odds behind Don't Pass — 0% edge">
+          <span className="pl">{oddsOk && bets.dontpass > 0 ? "LAY ODDS 0%" : "lay odds"}</span>
+        </Zone>
+
+        <Zone path="passline" cls="passband" area="pass" title="Pass Line — 1.41% edge">
+          <span className="bigband">PASS LINE</span>
+        </Zone>
+        <Zone path="passodds" cls="oddszone" area="po"
+          title={`Odds behind the line — 0% edge, max ${maxOddsMultiple(point || 6, rules.oddsMode)}x here`}>
+          <span className="pl">{oddsOk && bets.passline > 0 ? "ODDS 0% FREE" : "odds"}</span>
+        </Zone>
+
+        <div className="propscol" style={{ gridArea: "props" }}>
+          <div className="propshead">— CENTER —</div>
+          <div className="proppair">
+            <Prop path="hard:6" label="HARD 6" pays="9:1" edge={9.09} />
+            <Prop path="hard:8" label="HARD 8" pays="9:1" edge={9.09} />
           </div>
-        </>
-      )}
-
-      <div className="sec">
-        Place numbers
-        {phase === "comeout" && !working && <span className="warn">· OFF on come-out</span>}
+          <div className="proppair">
+            <Prop path="hard:4" label="HARD 4" pays="7:1" edge={11.11} />
+            <Prop path="hard:10" label="HARD 10" pays="7:1" edge={11.11} />
+          </div>
+          <Prop path="any7" label="ANY SEVEN" pays="4:1" edge={16.67} cls="wide worst" />
+          <div className="proppair">
+            <Prop path="aces" label="ACES" pays="30:1" edge={13.89} />
+            <Prop path="boxcars" label="12" pays="30:1" edge={13.89} />
+          </div>
+          <div className="proppair">
+            <Prop path="aceDeuce" label="ACE·2" pays="15:1" edge={11.11} />
+            <Prop path="yo" label="YO 11" pays="15:1" edge={11.11} />
+          </div>
+          <Prop path="anycraps" label="ANY CRAPS" pays="7:1" edge={11.11} cls="wide" />
+          <div className="proppair">
+            <Prop path="horn" label="HORN" pays="÷4" edge={12.5} />
+            <Prop path="ce" label="C & E" pays="÷2" edge={11.11} />
+          </div>
+          <Prop path="world" label="WORLD" pays="÷5" edge={13.33} cls="wide" />
+        </div>
       </div>
-      <div className="tiles g6">
-        {NUMBERS.map((n) => <NumTile key={n} n={n} />)}
+
+      <div className="mat-hints small">
+        Tap a region to bet the selected chip · <b>double-tap takes the bet down</b> · tap a riding C/DC chip to
+        back it with odds{phase === "comeout" && !working ? " · place bets are OFF on the come-out" : ""}
       </div>
 
-      <button className="expander" style={{ marginTop: 12 }} onClick={() => setShowBuyLay(!showBuyLay)}>
+      <button className="expander" onClick={() => setShowBuyLay(!showBuyLay)}>
         {showBuyLay ? "▾" : "▸"} Buy & Lay (true odds − 5% vig) — advanced
       </button>
       {showBuyLay && (
-        <>
-          <div className="sec">Buy — true odds minus vig (only worth it on 4 / 10)</div>
-          <div className="tiles g6">
-            {NUMBERS.map((n) => <Tile key={n} path={"buy:" + n} label={"BUY " + n} edge={BUY_EDGE[n]} />)}
-          </div>
-          <div className="sec">Lay — bet the 7 comes before the number (wrong-way)</div>
-          <div className="tiles g6">
-            {NUMBERS.map((n) => <Tile key={n} path={"lay:" + n} label={"LAY " + n} edge={LAY_EDGE[n]} />)}
-          </div>
-        </>
+        <div className="buylay">
+          {NUMBERS.map((n) => (
+            <Zone key={"b" + n} path={"buy:" + n} cls="prop" title={`Buy ${n} — ${BUY_EDGE[n].toFixed(2)}%`}>
+              <span className="pl">BUY {n}</span>
+              <span className="pp mono" style={{ color: edgeColor(BUY_EDGE[n]) }}>{BUY_EDGE[n].toFixed(2)}%</span>
+            </Zone>
+          ))}
+          {NUMBERS.map((n) => (
+            <Zone key={"l" + n} path={"lay:" + n} cls="prop" title={`Lay ${n} — ${LAY_EDGE[n].toFixed(2)}%`}>
+              <span className="pl">LAY {n}</span>
+              <span className="pp mono" style={{ color: edgeColor(LAY_EDGE[n]) }}>{LAY_EDGE[n].toFixed(2)}%</span>
+            </Zone>
+          ))}
+        </div>
       )}
-
-      <div className="sec">Hardways <span className="warn">· high edge</span></div>
-      <div className="tiles g4">
-        <Tile path="hard:4" label="HARD 4" edge={11.11} sub="7:1" />
-        <Tile path="hard:6" label="HARD 6" edge={9.09} sub="9:1" />
-        <Tile path="hard:8" label="HARD 8" edge={9.09} sub="9:1" />
-        <Tile path="hard:10" label="HARD 10" edge={11.11} sub="7:1" />
-      </div>
-
-      <div className="sec">Field & one-roll props <span className="warn">· the sucker row</span></div>
-      <div className="tiles g4">
-        <Tile path="field" label="FIELD" edge={fieldEdge(rules.fieldTriple)} sub={rules.fieldTriple ? "12 pays 3:1" : "12 pays 2:1"} />
-        <Tile path="any7" label="ANY SEVEN" edge={16.67} sub="4:1 · worst bet" />
-        <Tile path="anycraps" label="ANY CRAPS" edge={11.11} sub="7:1" />
-        <Tile path="yo" label="YO (11)" edge={11.11} sub="15:1" />
-        <Tile path="aceDeuce" label="ACE-DEUCE (3)" edge={11.11} sub="15:1" />
-        <Tile path="aces" label="ACES (2)" edge={13.89} sub="30:1" />
-        <Tile path="boxcars" label="BOXCARS (12)" edge={13.89} sub="30:1" />
-        <Tile path="horn" label="HORN" edge={12.5} sub="4-way, $4 units" />
-        <Tile path="ce" label="C & E" edge={11.11} sub="craps + 11" />
-        <Tile path="world" label="WORLD / WHIRL" edge={13.33} sub="5-way, $5 units" />
-      </div>
     </div>
   );
 }

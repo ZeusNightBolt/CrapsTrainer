@@ -46,12 +46,14 @@ A per-total P&L readout (2 through 12) computed by running the actual resolution
 combinations of the current state — so you can see exactly what every number does to you before you roll,
 with cell brightness tracking probability.
 
-### 🎲 Table — full interactive felt
-Every real bet is playable: Pass/Don't Pass, Come/Don't Come (with correct travel mechanics and per-number
-odds), free odds, Place, Buy, Lay, hardways, Field, and the complete center props (Any Seven, Any Craps,
-Yo, Ace-Deuce, Aces, Boxcars, Horn, C&E, World/Whirl). Includes the come-out working toggle, chip
-denominations, right-click/remove-mode take-downs, a plain-English roll log with exact amounts, session
-statistics with true per-roll P&L, a bankroll chart, and strategy presets.
+### 🎲 The mat — a real craps layout
+The betting surface is drawn as one full side of a real craps table — point boxes (4 5 SIX 8 NINE 10) with
+the ON puck riding the point, DON'T COME box, COME band, FIELD with the circled 2/12, DON'T PASS BAR,
+PASS LINE with a free-odds zone behind it, and the complete center props column — sized to fit an iPhone
+Pro Max screen with no scrolling. **Tap a region to bet the selected chip, double-tap to take the bet
+down, undo any betting action** (rolls are final), and tap a riding Come/Don't-Come chip to back it with
+odds. Every real bet is playable, dice tumble for ~3 seconds before the result lands, and the roll log
+narrates every resolution in plain English with exact amounts.
 
 ### ⚙️ Table rules — real casino variants
 Three variants you will actually encounter, live-wired into every number on every tab:

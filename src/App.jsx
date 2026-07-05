@@ -73,6 +73,8 @@ export default function App() {
   const [flash, setFlash] = useState(null); // { key, amt } → floating ±$ after a roll
   const [coachOn, setCoachOn] = useState(true);
   const [stance, setStance] = useState("bal");
+  const [undoStack, setUndoStack] = useState([]); // pre-mutation snapshots, cleared on each roll
+  const pendingUndo = useRef(null);
   const iv = useRef(null);
 
   const b = game.bets;
@@ -99,7 +101,26 @@ export default function App() {
     return true;
   }, [rolling, game.phase, game.point, b, rules.oddsMode]);
 
-  function mutate(fn) { setGame((g) => { const bets = structuredClone(g.bets); const bankroll = fn(bets, g.bankroll, g); return { ...g, bankroll: round2(bankroll), bets }; }); }
+  // Every betting mutation flows through here, so undo comes for free: a
+  // pre-mutation snapshot is pushed whenever the bets or bankroll actually
+  // change. The stack clears on each roll — you can't un-ring the dice.
+  function mutate(fn) {
+    pendingUndo.current = null;
+    setGame((g) => {
+      const bets = structuredClone(g.bets);
+      const bankroll = round2(fn(bets, g.bankroll, g));
+      const changed = bankroll !== g.bankroll || JSON.stringify(bets) !== JSON.stringify(g.bets);
+      pendingUndo.current = changed ? { bets: g.bets, bankroll: g.bankroll } : null;
+      return changed ? { ...g, bankroll, bets } : g;
+    });
+    setUndoStack((s) => (pendingUndo.current ? [...s.slice(-19), pendingUndo.current] : s));
+  }
+  function undo() {
+    if (!undoStack.length || rolling) return;
+    const last = undoStack[undoStack.length - 1];
+    setGame((g) => ({ ...g, bets: structuredClone(last.bets), bankroll: last.bankroll }));
+    setUndoStack((s) => s.slice(0, -1));
+  }
   function addPath(bets, path, amt) { if (path.includes(":")) { const [gr, n] = path.split(":"); bets[gr][n] += amt; } else bets[path] += amt; }
   function getPath(bets, path) { if (path.includes(":")) { const [gr, n] = path.split(":"); return bets[gr][n]; } return bets[path]; }
 
@@ -192,10 +213,12 @@ export default function App() {
     if (rolling) return;
     if (totalWagered(game.bets) === 0) { setEvents([{ type: "info", m: "No bets on the table. Place at least one bet first." }]); return; }
     setRolling(true);
+    setUndoStack([]); // dice in the air — betting decisions are final
     let n = 0;
+    // ~3s of tumble before the result lands: 33 shake frames at 90ms
     iv.current = setInterval(() => {
       setDice([1 + rnd6(), 1 + rnd6()]);
-      if (++n > 7) {
+      if (++n > 32) {
         clearInterval(iv.current);
         const d1 = 1 + rnd6(), d2 = 1 + rnd6();
         setDice([d1, d2]);
@@ -222,7 +245,7 @@ export default function App() {
         });
         setRolling(false);
       }
-    }, 55);
+    }, 90);
   }, [rolling, game, rules]);
 
   const applyPreset = useCallback((kind) => {
@@ -233,13 +256,18 @@ export default function App() {
     if (kind === "68") { add("place:6", 12); add("place:8", 12); }
     if (kind === "ironcross") { add("place:5", 10); add("place:6", 12); add("place:8", 12); add("field", 10); }
     if (kind === "props") { for (const p of ["hard:4", "hard:6", "hard:8", "hard:10"]) add(p, 5); add("any7", 5); add("yo", 5); add("horn", 8); }
-    setGame((g) => { const refund = totalWagered(g.bets); return { ...g, bankroll: round2(g.bankroll + refund - cost), bets }; });
+    setGame((g) => {
+      pendingUndo.current = { bets: g.bets, bankroll: g.bankroll };
+      const refund = totalWagered(g.bets);
+      return { ...g, bankroll: round2(g.bankroll + refund - cost), bets };
+    });
+    setUndoStack((s) => (pendingUndo.current ? [...s.slice(-19), pendingUndo.current] : s));
   }, []);
 
   const reset = useCallback(() => {
     setGame(newGame(1000)); setHist([1000]); setStats(INIT_STATS);
     setEvents([{ type: "info", m: "Reset. Bankroll $1,000." }]); setDice([1, 1]);
-    setLastRolls([]); setFlash(null);
+    setLastRolls([]); setFlash(null); setUndoStack([]);
   }, []);
 
   const blendedEdge = table.sum ? (table.drag / table.sum) * 100 : 0;
@@ -289,6 +317,7 @@ export default function App() {
               <button className={mode === "add" ? "on" : ""} onClick={() => setMode("add")}>Add</button>
               <button className={mode === "remove" ? "on" : ""} onClick={() => setMode("remove")}>Remove</button>
             </div>
+            <button className="btn ghost" onClick={undo} disabled={!undoStack.length || rolling} title="Undo the last betting action (rolls are final)">↩ Undo</button>
             <button className={"btn" + (game.working ? " on" : "")} onClick={toggleWorking} title="Are place/buy/hard/come-odds live on the come-out?">
               Come-out: {game.working ? "WORKING" : "OFF"}
             </button>
