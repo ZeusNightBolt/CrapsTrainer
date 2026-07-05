@@ -72,6 +72,7 @@ export default function App() {
   const [lastRolls, setLastRolls] = useState([]);
   const [flash, setFlash] = useState(null); // { key, amt } → floating ±$ after a roll
   const [coachOpen, setCoachOpen] = useState(false);
+  const [lastRoll, setLastRoll] = useState(null); // full context of the most recent roll, for the coach recap
   const [undoStack, setUndoStack] = useState([]); // pre-mutation snapshots, cleared on each roll
   const pendingUndo = useRef(null);
   const iv = useRef(null);
@@ -194,14 +195,21 @@ export default function App() {
         const out = resolve(game, d1, d2, rules);
         const delta = rollDelta(game.bets, out.state.bets, out.payout);
         const sevenOut = out.events.some((e) => e.type === "sevenout");
+        const madePoint = out.events.some((e) => e.m.includes("Point") && e.m.includes("made"));
         setGame(out.state);
         setHist((h) => [...h.slice(-119), out.state.bankroll]);
         setEvents([{ type: "roll", m: `Rolled ${d1} + ${d2} = ${d1 + d2}` }, ...out.events]);
         setLastRolls((r) => [{ d1, d2, t: d1 + d2, delta, sevenOut }, ...r.slice(0, 9)]);
+        // full context for the coach's post-roll recap (playful teaching)
+        setLastRoll({
+          id: Date.now(), d1, d2, total: d1 + d2, delta, events: out.events,
+          prevPhase: game.phase, prevPoint: game.point,
+          newPhase: out.state.phase, newPoint: out.state.point,
+          betsBefore: game.bets, madePoint, sevenOut,
+        });
         if (delta !== 0) setFlash({ key: Date.now(), amt: delta });
         if (navigator.vibrate) navigator.vibrate(sevenOut ? [30, 40, 60] : delta > 0 ? [12, 30, 12] : 12);
         setStats((s) => {
-          const madePoint = out.events.some((e) => e.m.includes("Point") && e.m.includes("made"));
           return {
             ...s, rolls: s.rolls + 1,
             points: s.points + (madePoint ? 1 : 0),
@@ -236,7 +244,7 @@ export default function App() {
   const reset = useCallback(() => {
     setGame(newGame(1000)); setHist([1000]); setStats(INIT_STATS);
     setEvents([{ type: "info", m: "Reset. Bankroll $1,000." }]); setDice([1, 1]);
-    setLastRolls([]); setFlash(null); setUndoStack([]);
+    setLastRolls([]); setFlash(null); setUndoStack([]); setLastRoll(null);
   }, []);
 
   const blendedEdge = table.sum ? (table.drag / table.sum) * 100 : 0;
@@ -323,7 +331,8 @@ export default function App() {
           <MobileBar phase={game.phase} point={game.point} dice={dice} rolling={rolling}
             sum={table.sum} bankroll={game.bankroll} start={stats.start} onRoll={roll} />
 
-          <CoachGenie insights={insights} exposure={exposure} open={coachOpen} onToggle={setCoachOpen} />
+          <CoachGenie insights={insights} exposure={exposure} lastRoll={lastRoll} rules={rules}
+            open={coachOpen} onToggle={setCoachOpen} />
         </>
       )}
 
