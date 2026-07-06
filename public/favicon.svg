@@ -1,16 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
   <defs>
     <linearGradient id="ft" x1="0" y1="0" x2="0.5" y2="1">
-      <stop offset="0" stop-color="#ff7d80"/><stop offset="1" stop-color="#f23d43"/>
+      <stop offset="0" stop-color="#40414b"/><stop offset="1" stop-color="#24252d"/>
     </linearGradient>
     <linearGradient id="fl" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#d92a30"/><stop offset="1" stop-color="#b81d23"/>
+      <stop offset="0" stop-color="#1b1c23"/><stop offset="1" stop-color="#121319"/>
     </linearGradient>
     <linearGradient id="fr" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#a81b21"/><stop offset="1" stop-color="#7f1017"/>
+      <stop offset="0" stop-color="#0f1014"/><stop offset="1" stop-color="#08080c"/>
     </linearGradient>
-    <radialGradient id="pip" cx="0.38" cy="0.32" r="0.75">
-      <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#dfe3e8"/>
+    <radialGradient id="pip" cx="0.36" cy="0.3" r="0.8">
+      <stop offset="0" stop-color="#fff2c2"/><stop offset="0.55" stop-color="#f5c518"/><stop offset="1" stop-color="#c99a06"/>
     </radialGradient>
     <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
       <feGaussianBlur stdDeviation="2.4"/>
@@ -18,15 +18,15 @@
   </defs>
 
   <!-- contact shadow -->
-  <ellipse cx="50" cy="93" rx="33" ry="5.5" fill="#000" opacity="0.28" filter="url(#soft)"/>
+  <ellipse cx="50" cy="93" rx="33" ry="5.5" fill="#000" opacity="0.32" filter="url(#soft)"/>
 
   <!-- three visible faces of the cube (a valid 5 / 3 / 6 corner) -->
-  <polygon points="50,8 85,28 50,48 15,28" fill="url(#ft)" stroke="#6d0f14" stroke-width="0.5" stroke-linejoin="round"/>
-  <polygon points="15,28 50,48 50,92 15,72" fill="url(#fl)" stroke="#5c0d12" stroke-width="0.5" stroke-linejoin="round"/>
-  <polygon points="85,28 50,48 50,92 85,72" fill="url(#fr)" stroke="#4d0a0f" stroke-width="0.5" stroke-linejoin="round"/>
+  <polygon points="50,8 85,28 50,48 15,28" fill="url(#ft)" stroke="#000" stroke-width="0.5" stroke-linejoin="round"/>
+  <polygon points="15,28 50,48 50,92 15,72" fill="url(#fl)" stroke="#000" stroke-width="0.5" stroke-linejoin="round"/>
+  <polygon points="85,28 50,48 50,92 85,72" fill="url(#fr)" stroke="#000" stroke-width="0.5" stroke-linejoin="round"/>
 
-  <!-- lit top rim -->
-  <polyline points="15,28 50,8 85,28" fill="none" stroke="#ffd0d1" stroke-width="0.8" stroke-linecap="round" opacity="0.45"/>
+  <!-- lit gold top rim -->
+  <polyline points="15,28 50,8 85,28" fill="none" stroke="#f5c518" stroke-width="0.9" stroke-linecap="round" opacity="0.55"/>
 
   <!-- pips: drawn in unit grid space, mapped onto each face plane by a matrix
        so they foreshorten correctly (circles become ellipses on the tilted faces) -->
