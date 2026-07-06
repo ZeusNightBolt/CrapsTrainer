@@ -7,13 +7,14 @@ import { NUMBERS, totalWagered } from "./engine.js";
 import { maxOddsMultiple } from "./util.js";
 import { ODDS_LADDER, DONT_LADDER } from "./bets.js";
 import { nextRollOutcomes } from "./outcomes.js";
+import { memoryInsights } from "./coachMemory.js";
 
 // One insight = one chat bubble. level drives colour + the genie's badge.
 const bad = (msg) => ({ level: "warn", msg });
 const doIt = (msg) => ({ level: "do", msg });
 const ok = (msg) => ({ level: "ok", msg });
 
-export function getAdvice(game, rules) {
+export function getAdvice(game, rules, read = null) {
   const b = game.bets;
   const outcomes = nextRollOutcomes(game, rules);
   const equity = game.bankroll + totalWagered(b);
@@ -64,6 +65,11 @@ export function getAdvice(game, rules) {
       insights.push(doIt(`Point is on and nothing's working. No need to wait for a new come-out — the <b>Come box</b> is the same Pass-Line play, live right now.`));
     }
   }
+
+  // ---- personalized: what the coach has learned you like to bet ----
+  // These read the persistent player profile (coachMemory.js) and speak to
+  // your actual tendencies, not just the felt in front of you.
+  for (const m of memoryInsights(read)) insights.push(m);
 
   // ---- combos & hedges: read the shape of the whole board ----
   const workingNums = new Set(placeNums.concat(comeRiding));

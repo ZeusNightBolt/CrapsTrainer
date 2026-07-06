@@ -1,5 +1,6 @@
 import { edgeColor, usd } from "../util.js";
 import { ODDS_LADDER, DONT_LADDER, buyEdge, layEdge, fieldEdge } from "../bets.js";
+import DiceMath from "./DiceMath.jsx";
 
 export default function Strategy({ rules }) {
   const Ladder = ({ label, edge }) => (
@@ -16,6 +17,9 @@ export default function Strategy({ rules }) {
 
   return (
     <div className="prose">
+      <DiceMath />
+
+      <h2 className="learn-h2">Strategy — buying variance at a fixed price</h2>
       <p><b>The whole game in one line:</b> every wager in craps is negative-EV, so you don't play to win — you play to
         choose your <b>variance</b> for a fixed, small expected cost. The only lever that scales bet size <i>without</i>
         adding edge is the free Odds bet. Everything else is a menu of ways to pay more.</p>

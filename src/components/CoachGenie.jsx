@@ -9,7 +9,7 @@ import { getRollRecap } from "../coach.js";
 //   • AFTER a roll it pops a playful speech bubble narrating what the dice did
 //     and teaching *why* (the 7 is the most common roll, what a natural is,
 //     which bets that number pays…), and keeps the full recap in the panel.
-function CoachGenie({ insights, exposure, lastRoll, rules, open, onToggle }) {
+function CoachGenie({ insights, exposure, lastRoll, rules, read, onForget, suppressBubble, open, onToggle }) {
   const recap = useMemo(() => getRollRecap(lastRoll, rules), [lastRoll, rules]);
 
   // transient speech bubble: shows after each roll, auto-dismisses, and is
@@ -23,7 +23,7 @@ function CoachGenie({ insights, exposure, lastRoll, rules, open, onToggle }) {
   }, [recap]);
   useEffect(() => { if (open) setBubbleId(null); }, [open]);
 
-  const bubbleShown = !open && bubbleId && recap && bubbleId === recap.id;
+  const bubbleShown = !suppressBubble && !open && bubbleId && recap && bubbleId === recap.id;
   const hasDo = insights.some((i) => i.level === "do");
   const hasWarn = insights.some((i) => i.level === "warn");
   const badge = bubbleShown ? recap.level === "win" ? "do" : recap.level === "lose" ? "warn" : "do"
@@ -55,6 +55,43 @@ function CoachGenie({ insights, exposure, lastRoll, rules, open, onToggle }) {
     </div>
   );
 
+  // "What I've learned about how you play" — a compact read of the persistent
+  // player profile (coachMemory.js). Shows your favourite bet, how your action
+  // is split, and the expected cost the math attaches to each lane.
+  const Memory = ({ read, onForget }) => {
+    const top = read.entries.slice(0, 4);
+    return (
+      <div className="genie-mem">
+        <div className="mem-head">
+          <span className="mem-title">🧠 What I've learned about you</span>
+          <button className="mem-forget" onClick={onForget} title="Erase the coach's memory of your betting history">forget</button>
+        </div>
+        <div className="mem-stat mono small">
+          {read.rolls} rolls tracked · net <b className={read.net >= 0 ? "up" : "down"}>{read.net >= 0 ? "+" : "−"}{usd(Math.abs(read.net))}</b>
+          {read.totalStaked > 0 && <> · blended edge <b>{read.blendedEdge.toFixed(2)}%</b></>}
+        </div>
+        {read.favorite && (
+          <div className="mem-fav small">Favourite bet: <b>{read.favorite.label}</b> — {usd(read.favorite.staked)} wagered</div>
+        )}
+        {top.length > 0 && (
+          <div className="mem-bars">
+            {top.map((e) => {
+              const frac = read.totalStaked > 0 ? e.staked / read.totalStaked : 0;
+              return (
+                <div key={e.id} className="mem-row" title={`Expected house edge cost so far: ${usd(e.drag)}`}>
+                  <span className="mem-lbl small">{e.label}</span>
+                  <span className="mem-track"><span className={"mem-fill tier-" + e.tier} style={{ width: Math.max(4, frac * 100) + "%" }} /></span>
+                  <span className="mem-drag mono small">−{usd(e.drag)}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <div className="mem-foot small">Bars = share of your action · <b>−$</b> = expected house-edge cost on that lane. I use this to tailor the advice above.</div>
+      </div>
+    );
+  };
+
   return (
     <div className="genie-root">
       {open && (
@@ -71,6 +108,7 @@ function CoachGenie({ insights, exposure, lastRoll, rules, open, onToggle }) {
                 <span dangerouslySetInnerHTML={{ __html: it.msg }} />
               </div>
             ))}
+            {read && read.rolls > 0 && <Memory read={read} onForget={onForget} />}
           </div>
           <div className="genie-foot mono">
             {exposure.seven < 0

@@ -24,8 +24,10 @@
 | | |
 |---|---|
 | 🎰 **Real craps mat** | One full side of a live table — point boxes, COME, FIELD, DON'T PASS, an outlined PASS LINE, and the center prop block. Aspect-locked + container-query scaled to **fit any screen** (iPhone Pro Max → desktop) with no scrolling. |
-| 👆 **Tactile betting** | **Tap** a region to bet · **double-tap** to take it down · **Undo** any action · tap a riding Come/DC chip to add odds. Red casino dice tumble ~1.5s before the reveal. |
-| 🧞 **Coach genie** | A bottom-right chat bubble that reads the felt and **explains the logic** — no amounts, no auto-betting. Flags leaks with reasons, names the smart next move, badges when there's something to read. |
+| 👆 **Tactile betting** | **Tap** a region to bet · **double-tap** to take it down · **Undo** or **Reset $** any time · tap a riding Come/DC chip to add odds. Black-and-gold dice tumble ~1.1s before the reveal. |
+| 🃏 **Result flash card** | After every roll, a summary card states the net **win / loss / push** big and clear — the dice, what just happened (point made, seven-out, natural…), which bets won and lost, and the coach's one-line *why*. |
+| 🧞 **Coach genie + memory** | A bottom-right chat bubble that reads the felt and **explains the logic** — no amounts, no auto-betting. It also **remembers how you play** (persisted locally): your favourite bets, how your action splits across the table, and the expected house-edge cost of each lane, so the advice is about *you*. |
+| 🎲 **Learn — the dice math, visualized** | The full **36-outcome distribution** drawn as the 1·2·3·4·5·6·5·4·3·2·1 pyramid (every combination shown as real pips), plus the **race-to-the-point** table connecting each number's ways to its true-odds payout. Generated from the same enumeration the engine uses. |
 | 🎯 **Next-roll panel** | Net P&L for every total 2–12, computed by running the real engine over all 36 dice combos — see what each number does to your stack *before* you throw. |
 | ⚙️ **Table rules** | Live-wired variants: max odds `1× → 100×`, Field `12 pays 2:1 / 3:1`, Buy/Lay vig `on-win / always`. |
 | 📊 **Bets & Payouts** | Every bet ranked by house edge for the active rules, with both Pass- and Don't-side odds ladders. |
@@ -51,9 +53,10 @@
 
 `npm run verify` gates CI — a payout that drifts from theory fails the deploy. It runs three layers:
 
-1. **Per-bet Monte-Carlo** — every bet family simulated to convergence vs. published figures.
-2. **Come / Don't-Come lifecycle sims** — box → travel → resolution, asserting the 1.41% / 1.36% edges.
-3. **Exact-payout rule checks** — the fiddly cases averages hide (come-odds off = no-action, winner comes down, bar-12 push, hardways idle when off).
+1. **Dice source-of-truth** — a 3M-roll fairness pass (each face ≈ 1/6, each total ≈ ways/36) plus a check that the Learn tab's dice-math module (`src/diceMath.js`) is internally sound and matches the theory.
+2. **Per-bet Monte-Carlo** — every bet family simulated to convergence vs. published figures.
+3. **Come / Don't-Come lifecycle sims** — box → travel → resolution, asserting the 1.41% / 1.36% edges.
+4. **Exact-payout rule checks** — the fiddly cases averages hide (come-odds off = no-action, winner comes down, bar-12 push, hardways idle when off).
 
 All edges derive from the 36-outcome dice space and corroborate [Wizard of Odds](https://wizardofodds.com/games/craps/).
 
@@ -101,12 +104,14 @@ Sources: [Craps](https://wizardofodds.com/games/craps/) · [edge per bet vs. per
 src/
 ├── App.jsx           game state, controls, session stats
 ├── engine.js         pure resolution engine (verified, UI-agnostic)
-├── coach.js          advisory genie — pure fn of (game, rules)
+├── coach.js          advisory genie — pure fn of (game, rules, memory)
+├── coachMemory.js    persistent player profile — what you bet & what it costs
+├── diceMath.js       36-outcome dice enumeration (Learn viz + coach)
 ├── outcomes.js       next-roll P&L over all 36 dice combos
 ├── bets.js           bet reference + odds ladders (rules-aware)
 ├── util.js           edge→color ramp, formatting, odds caps
 ├── styles.css        casino-feel styling, mobile-first
-└── components/       Table · CoachGenie · NextRoll · Simulator · Strategy · BetsReference · Rail · MobileBar · RulesPanel · Dice · Sparkline
+└── components/       Table · CoachGenie · RollResultCard · DiceMath · NextRoll · Simulator · Strategy · BetsReference · Rail · MobileBar · RulesPanel · Dice · Sparkline
 test/simulate.js      Monte-Carlo + exact-payout verification (gates CI)
 .github/workflows/    verify + build on push/PR · deploy to Pages on main
 ```
