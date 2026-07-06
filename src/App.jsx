@@ -1,10 +1,11 @@
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import {
   resolve, newGame, blankBets, NUMBERS, LAY_ODDS, VIG, DEFAULT_RULES, totalWagered,
 } from "./engine.js";
 import { usd, maxOddsMultiple } from "./util.js";
 import { PLACE_EDGE, buyEdge, layEdge, fieldEdge } from "./bets.js";
 import { getAdvice } from "./coach.js";
+import { loadProfile, saveProfile, forgetProfile, recordRoll, readProfile } from "./coachMemory.js";
 import { nextRollOutcomes } from "./outcomes.js";
 import { Dice } from "./components/Dice.jsx";
 import Table from "./components/Table.jsx";
@@ -12,6 +13,7 @@ import BetsReference from "./components/BetsReference.jsx";
 import Strategy from "./components/Strategy.jsx";
 import Simulator from "./components/Simulator.jsx";
 import CoachGenie from "./components/CoachGenie.jsx";
+import RollResultCard from "./components/RollResultCard.jsx";
 import NextRoll from "./components/NextRoll.jsx";
 import MobileBar from "./components/MobileBar.jsx";
 import RulesPanel from "./components/RulesPanel.jsx";
@@ -74,6 +76,7 @@ export default function App() {
   const [coachOpen, setCoachOpen] = useState(false);
   const [lastRoll, setLastRoll] = useState(null); // full context of the most recent roll, for the coach recap
   const [undoStack, setUndoStack] = useState([]); // pre-mutation snapshots, cleared on each roll
+  const [profile, setProfile] = useState(loadProfile); // persistent coach memory of your betting habits
   const pendingUndo = useRef(null);
   const iv = useRef(null);
 
@@ -81,7 +84,11 @@ export default function App() {
   const table = useMemo(() => ({ sum: totalWagered(b), drag: drag(b, rules) }), [b, rules]);
   const pnl = round2(game.bankroll - stats.start);
   const outcomes = useMemo(() => nextRollOutcomes(game, rules), [game, rules]);
-  const { insights, exposure } = useMemo(() => getAdvice(game, rules), [game, rules]);
+  const read = useMemo(() => readProfile(profile), [profile]);
+  const { insights, exposure } = useMemo(() => getAdvice(game, rules, read), [game, rules, read]);
+
+  // persist the coach's memory whenever it changes (localStorage, best-effort)
+  useEffect(() => { saveProfile(profile); }, [profile]);
 
   // Table max for line odds: pass odds cap = flat × multiple; don't-side lay
   // odds cap is expressed as lay-to-WIN the same multiple.
@@ -207,6 +214,7 @@ export default function App() {
           newPhase: out.state.phase, newPoint: out.state.point,
           betsBefore: game.bets, madePoint, sevenOut,
         });
+        setProfile((p) => recordRoll(p, game.bets, delta, rules)); // teach the coach what you bet
         if (delta !== 0) setFlash({ key: Date.now(), amt: delta });
         if (navigator.vibrate) navigator.vibrate(sevenOut ? [30, 40, 60] : delta > 0 ? [12, 30, 12] : 12);
         setStats((s) => {
@@ -273,7 +281,7 @@ export default function App() {
       </header>
 
       <div className="tabs">
-        {[["table", "Table"], ["bets", "Bets & Payouts"], ["strategy", "Strategy"], ["sim", "Simulator"]].map(([k, l]) => (
+        {[["table", "Table"], ["bets", "Bets & Payouts"], ["strategy", "Learn"], ["sim", "Simulator"]].map(([k, l]) => (
           <div key={k} className={"tab " + (tab === k ? "on" : "")} onClick={() => setTab(k)}>{l}</div>
         ))}
         <div className="grow" />
@@ -332,8 +340,11 @@ export default function App() {
           <MobileBar phase={game.phase} point={game.point} dice={dice} rolling={rolling}
             sum={table.sum} bankroll={game.bankroll} start={stats.start} onRoll={roll} />
 
+          <RollResultCard lastRoll={lastRoll} rules={rules} />
+
           <CoachGenie insights={insights} exposure={exposure} lastRoll={lastRoll} rules={rules}
-            open={coachOpen} onToggle={setCoachOpen} />
+            read={read} onForget={() => setProfile(forgetProfile())}
+            suppressBubble open={coachOpen} onToggle={setCoachOpen} />
         </>
       )}
 

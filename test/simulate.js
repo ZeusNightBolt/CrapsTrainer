@@ -3,6 +3,7 @@
 // realized house edge to theory, and EXITS NON-ZERO if any asserted bet drifts
 // beyond tolerance — so it can gate CI. Run with: npm run verify
 import { resolve, newGame, NUMBERS, DEFAULT_RULES } from "../src/engine.js";
+import { COMBOS, WAYS as DM_WAYS, PROB as DM_PROB, POINTS, pointRace } from "../src/diceMath.js";
 
 const N = 300000;          // resolutions per bet (deterministic seed -> stable)
 const TOL = 1.5;          // absolute %-edge tolerance (gross-bug detector)
@@ -222,6 +223,27 @@ for (const n of NUMBERS)
 const DICE_N = 3_000_000;
 const DICE_TOL = 0.004; // 0.4 percentage-point tolerance at this sample size
 const WAYS = { 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 7: 6, 8: 5, 9: 4, 10: 3, 11: 2, 12: 1 };
+// The Learn tab and the coach quote src/diceMath.js. Prove that module is
+// internally sound (its enumerated combos match the pyramid, probabilities sum
+// to 1) and agrees with these independent theoretical figures — so the
+// visualization can never silently drift from the math the sim verifies.
+const dmResults = [];
+{
+  let waySum = 0, probSum = 0;
+  for (let t = 2; t <= 12; t++) {
+    waySum += DM_WAYS[t]; probSum += DM_PROB[t];
+    dmResults.push({ label: `combos[${t}].length == ways`, ok: COMBOS[t].length === WAYS[t] && DM_WAYS[t] === WAYS[t] });
+  }
+  dmResults.push({ label: "sum of ways == 36", ok: waySum === 36 });
+  dmResults.push({ label: "sum of probabilities == 1", ok: Math.abs(probSum - 1) < 1e-9 });
+  // point-race: P(make) = ways/(ways+6); true odds reduce 6:ways
+  const trueOdds = { 4: "2 : 1", 5: "3 : 2", 6: "6 : 5", 8: "6 : 5", 9: "3 : 2", 10: "2 : 1" };
+  for (const t of POINTS) {
+    const r = pointRace(t);
+    const want = WAYS[t] / (WAYS[t] + 6);
+    dmResults.push({ label: `point ${t} make-prob & true odds`, ok: Math.abs(r.makeP - want) < 1e-9 && r.trueOdds === trueOdds[t] });
+  }
+}
 const diceResults = [];
 {
   const die = freshDie();
@@ -242,6 +264,13 @@ const diceResults = [];
 }
 
 let failed = 0;
+console.log(`\n  diceMath.js source-of-truth checks (Learn tab + coach)`);
+console.log("  " + "-".repeat(46));
+for (const r of dmResults) {
+  if (!r.ok) failed++;
+  console.log(`  ${r.ok ? "ok  " : "FAIL"} ${r.label}`);
+}
+
 console.log(`\n  dice fairness (${(DICE_N / 1e6)}M rolls of two independent dice)`);
 console.log("  " + "-".repeat(46));
 for (const r of diceResults) {
