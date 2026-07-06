@@ -41,8 +41,10 @@ body {
   display: flex; justify-content: space-between; align-items: center; gap: 12px;
   padding: 12px 0; flex-wrap: wrap;
 }
-.brand h1 { font-size: 19px; letter-spacing: .14em; text-transform: uppercase; margin: 0; font-weight: 800; }
-.brand h1::first-letter { color: var(--gold); }
+.brand h1 { font-size: 19px; letter-spacing: .14em; text-transform: uppercase; margin: 0; font-weight: 800; display: flex; align-items: center; }
+/* the die that replaces the "C" — a touch taller than the caps, flex-centered
+   on the wordmark, with a hair of space before "raps Trainer" */
+.brand-die { height: 1.42em; width: 1.32em; margin-right: 0.1em; flex-shrink: 0; }
 .brand .sub { color: var(--ink-faint); font-size: 11px; margin-top: 3px; letter-spacing: .02em; }
 .hud { display: flex; align-items: center; gap: 14px; }
 

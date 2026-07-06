@@ -8,6 +8,7 @@ import { getAdvice } from "./coach.js";
 import { loadProfile, saveProfile, forgetProfile, recordRoll, readProfile } from "./coachMemory.js";
 import { nextRollOutcomes } from "./outcomes.js";
 import { Dice } from "./components/Dice.jsx";
+import DieMark from "./components/DieMark.jsx";
 import Table from "./components/Table.jsx";
 import BetsReference from "./components/BetsReference.jsx";
 import Strategy from "./components/Strategy.jsx";
@@ -261,7 +262,7 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <div className="brand">
-          <h1>Craps Trainer</h1>
+          <h1><DieMark className="brand-die" />raps Trainer</h1>
           <div className="sub">Verified engine · house edge = the price · color-coded by cost</div>
         </div>
         <div className="hud">
