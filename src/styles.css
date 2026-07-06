@@ -795,5 +795,11 @@ a { color: #22d3ee; }
   .dm-row { grid-template-columns: 22px 1fr 50px; gap: 7px; }
   .dm-odds { display: none; }
   .dm-phead, .dm-prow { grid-template-columns: 38px 34px 1fr 92px; gap: 7px; }
-  .rrc-wrap { top: auto; bottom: calc(96px + env(safe-area-inset-bottom, 0px)); width: min(440px, 94vw); }
+  /* sit the result card clear above the coach fab so its teach text never runs
+     under the floating genie in the bottom-right corner */
+  .rrc-wrap { top: auto; bottom: calc(150px + env(safe-area-inset-bottom, 0px)); width: min(440px, 94vw); }
+  /* let the coach panel span the phone width instead of leaving a sliver of
+     background labels peeking down its left edge (it's anchored right:0 inside
+     the fixed genie-root, so widen it rather than re-anchoring with left) */
+  .genie-panel { width: calc(100vw - 24px); max-height: 66vh; }
 }

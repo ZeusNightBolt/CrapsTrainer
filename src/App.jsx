@@ -80,6 +80,13 @@ export default function App() {
   const [profile, setProfile] = useState(loadProfile); // persistent coach memory of your betting habits
   const pendingUndo = useRef(null);
   const iv = useRef(null);
+  const tabsRef = useRef(null);
+
+  // On phones the tab row scrolls horizontally; make sure the selected tab is
+  // fully in view so its label never sits half-clipped at the edge.
+  useEffect(() => {
+    tabsRef.current?.querySelector(".tab.on")?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+  }, [tab]);
 
   const b = game.bets;
   const table = useMemo(() => ({ sum: totalWagered(b), drag: drag(b, rules) }), [b, rules]);
@@ -281,7 +288,7 @@ export default function App() {
         </div>
       </header>
 
-      <div className="tabs">
+      <div className="tabs" ref={tabsRef}>
         {[["table", "Table"], ["bets", "Bets & Payouts"], ["strategy", "Learn"], ["sim", "Simulator"]].map(([k, l]) => (
           <div key={k} className={"tab " + (tab === k ? "on" : "")} onClick={() => setTab(k)}>{l}</div>
         ))}

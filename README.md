@@ -82,6 +82,7 @@ npm install && npm run dev        # → http://localhost:5173
 | `npm run dev` | Local dev server |
 | `npm run build` | Production build → `dist/` |
 | `npm run verify` | Monte-Carlo + dice-fairness verification (gates CI) |
+| `npm test` | Unit + build smoke tests (`node:test`, zero-dep) |
 
 ## 🧩 Use the engine standalone
 
