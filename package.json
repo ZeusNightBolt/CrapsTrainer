@@ -9,7 +9,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "verify": "node test/simulate.js"
+    "verify": "node test/simulate.js",
+    "test": "node --test test/unit/*.test.js test/smoke/*.test.js"
   },
   "dependencies": {
     "react": "^18.3.1",

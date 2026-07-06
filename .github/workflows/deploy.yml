@@ -12,9 +12,14 @@ permissions:
   pages: write
   id-token: write
 
+# Serialize Pages work under a single "pages" group and DO NOT cancel an
+# in-flight run: cancelling a deployment mid-flight is what leaves the
+# github-pages environment stuck and makes actions/deploy-pages fail fast with
+# "Deployment failed, try again later." This mirrors GitHub's official Pages
+# starter workflow.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: pages
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -28,14 +33,18 @@ jobs:
       - run: npm ci
       - run: npm run verify   # fail the build if any payout drifts from theory
       - run: npm run build
+      - run: npm test         # unit + build smoke tests
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
-  # Only publish from main — pull_request runs stop after `build` so PRs get
-  # the verify+build check without ever touching the live Pages deployment.
+  # Publish on a push to main or a manual re-run (workflow_dispatch) — never on
+  # a pull_request, whose run stops after `build` so PRs get verify+build+test
+  # without touching the live Pages deployment. Making it dispatch-runnable
+  # means a stuck deploy can be re-published from the Actions tab without a new
+  # commit.
   deploy:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     environment:
