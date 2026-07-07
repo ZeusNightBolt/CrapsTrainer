@@ -77,6 +77,27 @@ export function rollDice(rng = Math.random) {
   return [1 + Math.floor(rng() * 6), 1 + Math.floor(rng() * 6)];
 }
 
+// ---------------------------------------------------------------------------
+// Live-table RNG: a cryptographically sound, provably UNBIASED d6.
+// Rejection sampling removes modulo bias: a random uint8 is accepted only if
+// it is below 252 (= 42 × 6, the largest multiple of 6 that fits in a byte),
+// so `v % 6` over the accepted range is exactly uniform — each face precisely
+// 1/6, each ordered dice pair precisely 1/36. Bytes are drawn in batches from
+// crypto.getRandomValues for speed. The live table must roll with THIS, never
+// `Math.random`; seedable PRNGs (test/simulate.js's mulberry32) exist only so
+// the CI verifier is reproducible.
+// ---------------------------------------------------------------------------
+const RNG_POOL = new Uint8Array(512);
+let rngIdx = RNG_POOL.length;
+export function cryptoDie() {
+  for (;;) {
+    if (rngIdx >= RNG_POOL.length) { globalThis.crypto.getRandomValues(RNG_POOL); rngIdx = 0; }
+    const v = RNG_POOL[rngIdx++];
+    if (v < 252) return 1 + (v % 6);
+  }
+}
+export function rollDiceCrypto() { return [cryptoDie(), cryptoDie()]; }
+
 // Total currently-active wager across every bet type — used for the "on the
 // table" readout and to detect when a simulated session has no live bets left.
 export function totalWagered(b) {

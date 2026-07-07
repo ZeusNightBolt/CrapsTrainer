@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { resolve, newGame, NUMBERS, LAY_ODDS, totalWagered } from "../engine.js";
+import { resolve, newGame, NUMBERS, LAY_ODDS, totalWagered, cryptoDie } from "../engine.js";
 import { maxOddsMultiple, usd } from "../util.js";
 
 // Each strategy is just a `beforeRoll(g, unit, rules)` mutator that inspects
@@ -89,7 +89,7 @@ function runSession(strategy, unit, rules, startBankroll, maxRolls) {
   for (let i = 0; i < maxRolls; i++) {
     strategy.beforeRoll(g, unit, rules);
     if (g.bankroll < unit && totalWagered(g.bets) === 0) break; // busted, nothing left to bet
-    const d1 = 1 + Math.floor(Math.random() * 6), d2 = 1 + Math.floor(Math.random() * 6);
+    const d1 = cryptoDie(), d2 = cryptoDie();
     const out = resolve(g, d1, d2, rules);
     g = out.state;
   }

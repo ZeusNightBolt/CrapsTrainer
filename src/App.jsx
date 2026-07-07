@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import {
-  resolve, newGame, blankBets, NUMBERS, LAY_ODDS, VIG, DEFAULT_RULES, totalWagered,
+  resolve, newGame, blankBets, NUMBERS, LAY_ODDS, VIG, DEFAULT_RULES, totalWagered, cryptoDie,
 } from "./engine.js";
 import { usd, maxOddsMultiple } from "./util.js";
 import { PLACE_EDGE, buyEdge, layEdge, fieldEdge } from "./bets.js";
@@ -28,7 +28,6 @@ const CHIP_STYLE = {
   100: { background: "#1e293b", color: "#fff" },
 };
 
-const rnd6 = () => Math.floor(Math.random() * 6);
 const round2 = (x) => Math.round((x + Number.EPSILON) * 100) / 100;
 
 // per-path edge for the live "expected drag" readout — rule-dependent entries
@@ -202,10 +201,11 @@ export default function App() {
     let n = 0;
     // ~1.1s of tumble before the result lands: 12 shake frames at 90ms
     iv.current = setInterval(() => {
-      setDice([1 + rnd6(), 1 + rnd6()]);
+      setDice([cryptoDie(), cryptoDie()]);
       if (++n > 11) {
         clearInterval(iv.current);
-        const d1 = 1 + rnd6(), d2 = 1 + rnd6();
+        // the roll that counts: crypto-sound, rejection-sampled, unbiased d6s
+        const d1 = cryptoDie(), d2 = cryptoDie();
         setDice([d1, d2]);
         const out = resolve(game, d1, d2, rules);
         const delta = rollDelta(game.bets, out.state.bets, out.payout);

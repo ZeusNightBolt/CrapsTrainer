@@ -2,7 +2,7 @@
 // Deterministic (fixed seed): simulates each bet to convergence, compares the
 // realized house edge to theory, and EXITS NON-ZERO if any asserted bet drifts
 // beyond tolerance — so it can gate CI. Run with: npm run verify
-import { resolve, newGame, NUMBERS, DEFAULT_RULES } from "../src/engine.js";
+import { resolve, newGame, NUMBERS, DEFAULT_RULES, cryptoDie } from "../src/engine.js";
 import { COMBOS, WAYS as DM_WAYS, PROB as DM_PROB, POINTS, pointRace } from "../src/diceMath.js";
 
 const N = 300000;          // resolutions per bet (deterministic seed -> stable)
@@ -262,6 +262,27 @@ const diceResults = [];
     diceResults.push({ label: `total ${t} (${WAYS[t]}/36)`, p, want, ok: Math.abs(p - want) <= DICE_TOL });
   }
 }
+// The LIVE-table die (crypto.getRandomValues + rejection sampling) gets the
+// same fairness gate as the seeded verifier die: each face 1/6, each total
+// WAYS/36. This is what actually deals the interactive rolls, so a
+// reintroduced modulo bias or a swap back to Math.random fails CI here.
+const liveDiceResults = [];
+{
+  const faces = new Array(7).fill(0);
+  const totals = new Array(13).fill(0);
+  for (let i = 0; i < DICE_N; i++) {
+    const a = cryptoDie(), b = cryptoDie();
+    faces[a]++; faces[b]++; totals[a + b]++;
+  }
+  for (let f = 1; f <= 6; f++) {
+    const p = faces[f] / (DICE_N * 2), want = 1 / 6;
+    liveDiceResults.push({ label: `face ${f}`, p, want, ok: Math.abs(p - want) <= DICE_TOL });
+  }
+  for (let t = 2; t <= 12; t++) {
+    const p = totals[t] / DICE_N, want = WAYS[t] / 36;
+    liveDiceResults.push({ label: `total ${t} (${WAYS[t]}/36)`, p, want, ok: Math.abs(p - want) <= DICE_TOL });
+  }
+}
 
 let failed = 0;
 console.log(`\n  diceMath.js source-of-truth checks (Learn tab + coach)`);
@@ -274,6 +295,13 @@ for (const r of dmResults) {
 console.log(`\n  dice fairness (${(DICE_N / 1e6)}M rolls of two independent dice)`);
 console.log("  " + "-".repeat(46));
 for (const r of diceResults) {
+  if (!r.ok) failed++;
+  console.log(`  ${r.ok ? "ok  " : "FAIL"} ${r.label.padEnd(18)} ${(r.p * 100).toFixed(2)}%  (theory ${(r.want * 100).toFixed(2)}%)`);
+}
+
+console.log(`\n  LIVE dice fairness (${(DICE_N / 1e6)}M rolls, crypto rejection-sampled d6)`);
+console.log("  " + "-".repeat(46));
+for (const r of liveDiceResults) {
   if (!r.ok) failed++;
   console.log(`  ${r.ok ? "ok  " : "FAIL"} ${r.label.padEnd(18)} ${(r.p * 100).toFixed(2)}%  (theory ${(r.want * 100).toFixed(2)}%)`);
 }
