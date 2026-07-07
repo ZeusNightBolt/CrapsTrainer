@@ -4,7 +4,7 @@
 // as a precise failure here, not a drifted average.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { newGame, resolve, blankBets, totalWagered, NUMBERS, DEFAULT_RULES } from "../../src/engine.js";
+import { newGame, resolve, blankBets, totalWagered, NUMBERS, DEFAULT_RULES, cryptoDie, rollDiceCrypto } from "../../src/engine.js";
 
 const withBets = (mut) => { const g = newGame(1000); mut(g.bets); return g; };
 
@@ -78,10 +78,14 @@ test("don't pass pushes on the barred 12", () => {
   assert.ok(events.some((e) => e.type === "push"));
 });
 
-test("field pays triple on the 2 under the 3:1 rule", () => {
+test("field pays 2:1 on the 2, and 3:1 on the 12 under the triple rule", () => {
   const g = withBets((b) => { b.field = 10; });
-  const { payout } = resolve(g, 1, 1, { fieldTriple: true, vigAlways: false }); // 2
-  assert.equal(payout, 30); // 10 stake + 20 win (2:1 base doubled to 3x total)
+  const rules = { fieldTriple: true, vigAlways: false };
+  assert.equal(resolve(g, 1, 1, rules).payout, 30); // 2: 10 stake + 20 win (2:1)
+  assert.equal(resolve(g, 6, 6, rules).payout, 40); // 12: 10 stake + 30 win (3:1)
+  assert.equal(resolve(g, 6, 6, { ...rules, fieldTriple: false }).payout, 30); // 12 at 2:1 tables
+  assert.equal(resolve(g, 2, 2, rules).payout, 20); // 4: even money
+  assert.equal(resolve(g, 3, 4, rules).payout, 0);  // 7: loses
 });
 
 test("place 6 pays 7:6 and keeps working after a win", () => {
@@ -120,4 +124,32 @@ test("totalWagered sums every live bet", () => {
 
 test("NUMBERS are the six box points", () => {
   assert.deepEqual(NUMBERS, [4, 5, 6, 8, 9, 10]);
+});
+
+test("cryptoDie yields only integer faces 1-6 and reaches all six", () => {
+  const seen = new Set();
+  for (let i = 0; i < 6000; i++) {
+    const f = cryptoDie();
+    assert.ok(Number.isInteger(f) && f >= 1 && f <= 6, `face out of range: ${f}`);
+    seen.add(f);
+  }
+  assert.equal(seen.size, 6);
+});
+
+test("cryptoDie faces are uniform (rejection sampling leaves no modulo bias)", () => {
+  // 120k draws: per-face sd ≈ 0.107%, so a ±1% band is a >9-sigma gate —
+  // it can only trip on a genuine bias (e.g. a reintroduced bare `% 6`).
+  const n = 120000, counts = [0, 0, 0, 0, 0, 0];
+  for (let i = 0; i < n; i++) counts[cryptoDie() - 1]++;
+  for (let f = 0; f < 6; f++) {
+    const p = counts[f] / n;
+    assert.ok(Math.abs(p - 1 / 6) < 0.01, `face ${f + 1} freq ${p} drifted from 1/6`);
+  }
+});
+
+test("rollDiceCrypto returns two independent in-range dice", () => {
+  for (let i = 0; i < 1000; i++) {
+    const [a, b] = rollDiceCrypto();
+    assert.ok(a >= 1 && a <= 6 && b >= 1 && b <= 6);
+  }
 });
